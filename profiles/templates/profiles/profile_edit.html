@@ -1,0 +1,126 @@
+{% extends 'profiles/base.html' %}
+
+{% block title %}Edit Profile - CourseMaster{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="email"],
+    .form-group input[type="url"],
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .form-group input[type="file"] {
+        padding: 8px 0;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #ecf0f1;
+    }
+    
+    .avatar-preview {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-top: 10px;
+        border: 3px solid #3498db;
+    }
+    
+    .current-avatar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .help-text {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 25px; color: #2c3e50;">Edit Profile</h2>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}">
+    </div>
+    
+    <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}">
+    </div>
+    
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="{{ user.email }}">
+    </div>
+    
+    <div class="form-group">
+        <label for="bio">Bio</label>
+        <textarea id="bio" name="bio">{{ profile.bio }}</textarea>
+        <div class="help-text">Tell us a little about yourself</div>
+    </div>
+    
+    <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" value="{{ profile.location }}">
+    </div>
+    
+    <div class="form-group">
+        <label for="website">Website</label>
+        <input type="url" id="website" name="website" value="{{ profile.website }}">
+        <div class="help-text">Your personal website or portfolio</div>
+    </div>
+    
+    <div class="form-group">
+        <label for="avatar">Profile Picture</label>
+        {% if profile.avatar %}
+            <div class="current-avatar">
+                <img src="{{ profile.avatar.url }}" alt="Current avatar" class="avatar-preview">
+                <span>Current avatar</span>
+            </div>
+        {% endif %}
+        <input type="file" id="avatar" name="avatar" accept="image/*">
+        <div class="help-text">Upload a new profile picture (JPG, PNG, GIF)</div>
+    </div>
+    
+    <div class="form-actions">
+        <button type="submit" class="btn">Save Changes</button>
+        <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
