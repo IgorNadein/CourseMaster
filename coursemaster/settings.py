@@ -124,3 +124,7 @@ MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Login/Logout redirects
+LOGIN_REDIRECT_URL = '/profile/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'
