@@ -56,6 +56,15 @@
             background-color: #34495e;
         }
         
+        nav a.btn-signup {
+            background-color: #5624d0;
+            font-weight: 600;
+        }
+        
+        nav a.btn-signup:hover {
+            background-color: #4318ab;
+        }
+        
         .content {
             background: white;
             padding: 30px;
@@ -87,6 +96,51 @@
         .btn-secondary:hover {
             background-color: #7f8c8d;
         }
+        
+        /* Messages styling */
+        .messages {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+        
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            font-size: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .message:last-child {
+            margin-bottom: 0;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .message.warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        
+        .message.info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            color: #0c5460;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -100,12 +154,23 @@
                     <a href="{% url 'logout' %}">Logout</a>
                 {% else %}
                     <a href="{% url 'login' %}">Login</a>
+                    <a href="{% url 'register' %}" class="btn-signup">Sign Up</a>
                 {% endif %}
             </nav>
         </div>
     </header>
     
     <div class="container">
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="message {{ message.tags }}">
+                {{ message }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        
         <div class="content">
             {% block content %}{% endblock %}
         </div>

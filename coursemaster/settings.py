@@ -129,6 +129,9 @@ MEDIA_ROOT = BASE_DIR / 'mediafiles'
 # https://docs.djangoproject.com/en/4.2/ref/primary-key/
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Email configuration (console backend for development)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 # Authentication URLs
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'profile'
