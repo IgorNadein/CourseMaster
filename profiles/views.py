@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib import messages
 from .models import UserProfile
 
 
@@ -29,9 +30,10 @@ def profile_edit(request):
     
     if request.method == 'POST':
         # Update profile fields
-        profile.bio = request.POST.get('bio', '')
-        profile.location = request.POST.get('location', '')
-        profile.website = request.POST.get('website', '')
+        profile.bio = request.POST.get('bio', '').strip()
+        profile.location = request.POST.get('location', '').strip()
+        profile.website = request.POST.get('website', '').strip()
+        profile.headline = request.POST.get('headline', '').strip()
         
         if 'avatar' in request.FILES:
             profile.avatar = request.FILES['avatar']
@@ -39,15 +41,15 @@ def profile_edit(request):
         profile.save()
         
         # Update user fields
-        request.user.first_name = request.POST.get('first_name', '')
-        request.user.last_name = request.POST.get('last_name', '')
-        request.user.email = request.POST.get('email', '')
+        request.user.first_name = request.POST.get('first_name', '').strip()
+        request.user.last_name = request.POST.get('last_name', '').strip()
+        request.user.email = request.POST.get('email', '').strip()
         request.user.save()
         
+        messages.success(request, 'Profile updated successfully!')
         return redirect('profile')
     
     context = {
         'profile': profile,
     }
     return render(request, 'profiles/profile_edit.html', context)
-
