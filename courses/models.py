@@ -174,7 +174,7 @@ class Enrollment(models.Model):
 
 class LessonProgress(models.Model):
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='lesson_progress')
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='progress_records')
     completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(blank=True, null=True)
     last_position = models.PositiveIntegerField(default=0, help_text="Video position in seconds")
