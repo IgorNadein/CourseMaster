@@ -40,7 +40,7 @@ class Course(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
     subtitle = models.CharField(max_length=300, blank=True, help_text="Short catchy description")
-    description = models.TextField(help_text="Full course description")
+    description = models.TextField(blank=True, help_text="Full course description")
     
     # Instructor & Category
     instructor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses_taught')

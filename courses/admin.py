@@ -85,3 +85,11 @@ class ReviewAdmin(admin.ModelAdmin):
     search_fields = ['student__username', 'course__title', 'comment']
     readonly_fields = ['created_at', 'updated_at']
 
+
+@admin.register(LessonProgress)
+class LessonProgressAdmin(admin.ModelAdmin):
+    list_display = ['enrollment', 'lesson', 'completed', 'completed_at', 'last_position']
+    list_filter = ['completed', 'completed_at']
+    search_fields = ['enrollment__student__username', 'lesson__title']
+    readonly_fields = ['completed_at']
+
