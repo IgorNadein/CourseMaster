@@ -1,6 +1,6 @@
 {% extends 'profiles/base.html' %}
 
-{% block title %}Edit Profile - CourseMaster{% endblock %}
+{% block title %}Редактирование профиля - CourseMaster{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -69,18 +69,18 @@
 {% endblock %}
 
 {% block content %}
-<h2 style="margin-bottom: 25px; color: #2c3e50;">Edit Profile</h2>
+<h2 style="margin-bottom: 25px; color: #2c3e50;">Редактирование профиля</h2>
 
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     
     <div class="form-group">
-        <label for="first_name">First Name</label>
+        <label for="first_name">Имя</label>
         <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}">
     </div>
     
     <div class="form-group">
-        <label for="last_name">Last Name</label>
+        <label for="last_name">Фамилия</label>
         <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}">
     </div>
     
@@ -90,37 +90,37 @@
     </div>
     
     <div class="form-group">
-        <label for="bio">Bio</label>
+        <label for="bio">О себе</label>
         <textarea id="bio" name="bio">{{ profile.bio }}</textarea>
-        <div class="help-text">Tell us a little about yourself</div>
+        <div class="help-text">Расскажите немного о себе</div>
     </div>
     
     <div class="form-group">
-        <label for="location">Location</label>
+        <label for="location">Местоположение</label>
         <input type="text" id="location" name="location" value="{{ profile.location }}">
     </div>
     
     <div class="form-group">
-        <label for="website">Website</label>
+        <label for="website">Веб-сайт</label>
         <input type="url" id="website" name="website" value="{{ profile.website }}">
-        <div class="help-text">Your personal website or portfolio</div>
+        <div class="help-text">Ваш личный сайт или портфолио</div>
     </div>
     
     <div class="form-group">
-        <label for="avatar">Profile Picture</label>
+        <label for="avatar">Фото профиля</label>
         {% if profile.avatar %}
             <div class="current-avatar">
                 <img src="{{ profile.avatar.url }}" alt="Current avatar" class="avatar-preview">
-                <span>Current avatar</span>
+                <span>Текущее фото</span>
             </div>
         {% endif %}
         <input type="file" id="avatar" name="avatar" accept="image/*">
-        <div class="help-text">Upload a new profile picture (JPG, PNG, GIF)</div>
+        <div class="help-text">Загрузите новое фото (JPG, PNG, GIF)</div>
     </div>
     
     <div class="form-actions">
-        <button type="submit" class="btn">Save Changes</button>
-        <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn">Сохранить изменения</button>
+        <a href="{% url 'profile' %}" class="btn btn-secondary">Отмена</a>
     </div>
 </form>
 {% endblock %}

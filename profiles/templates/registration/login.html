@@ -1,6 +1,6 @@
 {% extends 'profiles/base.html' %}
 
-{% block title %}Log In - CourseMaster{% endblock %}
+{% block title %}Вход - CourseMaster{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -171,8 +171,8 @@
 <div class="auth-container">
     <div class="auth-card">
         <div class="auth-header">
-            <h2>Welcome back</h2>
-            <p>Log in to continue your learning</p>
+            <h2>С возвращением</h2>
+            <p>Войдите, чтобы продолжить обучение</p>
         </div>
         
         {% if form.non_field_errors %}
@@ -189,7 +189,7 @@
             {% csrf_token %}
             
             <div class="form-group">
-                <label for="{{ form.username.id_for_label }}">Username or Email</label>
+                <label for="{{ form.username.id_for_label }}">Имя пользователя или Email</label>
                 {{ form.username }}
                 {% if form.username.errors %}
                     {% for error in form.username.errors %}
@@ -199,7 +199,7 @@
             </div>
             
             <div class="form-group">
-                <label for="{{ form.password.id_for_label }}">Password</label>
+                <label for="{{ form.password.id_for_label }}">Пароль</label>
                 {{ form.password }}
                 {% if form.password.errors %}
                     {% for error in form.password.errors %}
@@ -211,18 +211,18 @@
             <div class="form-options">
                 <div class="remember-me">
                     <input type="checkbox" name="remember_me" id="remember_me">
-                    <label for="remember_me">Remember me</label>
+                    <label for="remember_me">Запомнить меня</label>
                 </div>
-                <a href="{% url 'password_reset' %}" class="forgot-password">Forgot password?</a>
+                <a href="{% url 'password_reset' %}" class="forgot-password">Забыли пароль?</a>
             </div>
             
             <input type="hidden" name="next" value="{{ next }}">
             
-            <button type="submit" class="btn-primary">Log In</button>
+            <button type="submit" class="btn-primary">Войти</button>
         </form>
         
         <div class="auth-footer">
-            <p>Don't have an account? <a href="{% url 'register' %}">Sign up</a></p>
+            <p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
         </div>
     </div>
 </div>

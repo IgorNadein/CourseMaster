@@ -45,6 +45,7 @@ urlpatterns = [
         template_name='registration/password_reset_complete.html'
     ), name='password_reset_complete'),
     path('profile/', include('profiles.urls')),
+    path('courses/', include('courses.urls')),
 ]
 
 if settings.DEBUG:
