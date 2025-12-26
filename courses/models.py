@@ -208,3 +208,100 @@ class Review(models.Model):
     
     def __str__(self):
         return f"{self.student.username} - {self.course.title} ({self.rating}★)"
+
+
+class Quiz(models.Model):
+    """Quiz attached to a specific lesson"""
+    lesson = models.OneToOneField(Lesson, on_delete=models.CASCADE, related_name='quiz')
+    title = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True)
+    pass_percentage = models.PositiveIntegerField(default=50, help_text="Minimum % to pass")
+    time_limit_minutes = models.PositiveIntegerField(null=True, blank=True, help_text="Quiz time limit in minutes")
+    attempts_limit = models.PositiveIntegerField(default=3, help_text="Maximum attempts allowed")
+    shuffle_questions = models.BooleanField(default=False)
+    show_answers = models.BooleanField(default=True, help_text="Show correct answers after completion")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = "Quizzes"
+    
+    def __str__(self):
+        return f"Quiz: {self.lesson.title}"
+
+
+class Question(models.Model):
+    QUESTION_TYPE_CHOICES = [
+        ('multiple', 'Multiple Choice'),
+        ('single', 'Single Choice'),
+        ('true_false', 'True/False'),
+        ('text', 'Short Answer'),
+    ]
+    
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES, default='single')
+    text = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+    points = models.PositiveIntegerField(default=1, help_text="Points for correct answer")
+    explanation = models.TextField(blank=True, help_text="Explanation shown after answer")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['order', 'created_at']
+        unique_together = ['quiz', 'order']
+    
+    def __str__(self):
+        return f"{self.quiz.title} - Q{self.order}: {self.text[:50]}"
+
+
+class QuestionChoice(models.Model):
+    """Answer choices for multiple/single choice questions"""
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices')
+    text = models.CharField(max_length=500)
+    is_correct = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['order']
+        unique_together = ['question', 'order']
+    
+    def __str__(self):
+        return f"{self.question.text[:30]} - {self.text[:30]}"
+
+
+class QuizAttempt(models.Model):
+    """Student's attempt to take a quiz"""
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Points earned")
+    total_points = models.PositiveIntegerField(null=True, blank=True, help_text="Total points available")
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Score %")
+    is_passed = models.BooleanField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['student', 'quiz']
+        ordering = ['-started_at']
+    
+    def __str__(self):
+        return f"{self.student.username} - {self.quiz.title}"
+
+
+class UserAnswer(models.Model):
+    """Individual answer to a question in a quiz attempt"""
+    attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='user_answers')
+    choice = models.ForeignKey(QuestionChoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='user_answers')
+    text_answer = models.TextField(blank=True, help_text="For short answer questions")
+    is_correct = models.BooleanField(null=True, blank=True)
+    points_earned = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    answered_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['attempt', 'question']
+        ordering = ['question__order']
+    
+    def __str__(self):
+        return f"{self.attempt.student.username} - {self.question.text[:30]}"

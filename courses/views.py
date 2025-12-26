@@ -6,8 +6,10 @@ from django.contrib import messages
 from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.urls import reverse_lazy, reverse
-from .models import Course, Category, Enrollment, Section, Lesson, LessonProgress, Review
-from .forms import CourseForm, SectionForm, LessonForm, CoursePublishForm
+from django.http import JsonResponse
+from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
+                     Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer)
+from .forms import CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, QuestionChoiceForm
 
 
 class CourseListView(ListView):
@@ -687,3 +689,230 @@ class CourseUnpublishView(LoginRequiredMixin, UserPassesTestMixin, View):
             f'Курс "{course.title}" снят с публикации.'
         )
         return redirect('instructor_course_detail', slug=slug)
+
+
+# ============================================================
+# QUIZ/TEST VIEWS (Система тестирования)
+# ============================================================
+
+class QuizTakeView(LoginRequiredMixin, View):
+    """
+    Студент проходит тест
+    """
+    template_name = 'courses/quiz_take.html'
+    
+    def get(self, request, quiz_id):
+        quiz = get_object_or_404(Quiz, id=quiz_id)
+        lesson = quiz.lesson
+        course = lesson.section.course
+        
+        # Проверка: студент записан на курс?
+        try:
+            enrollment = Enrollment.objects.get(student=request.user, course=course)
+        except Enrollment.DoesNotExist:
+            messages.error(request, 'Вы не записаны на этот курс.')
+            return redirect('course_detail', slug=course.slug)
+        
+        # Проверка: доступны ли попытки?
+        attempts = QuizAttempt.objects.filter(student=request.user, quiz=quiz)
+        if attempts.count() >= quiz.attempts_limit:
+            messages.error(request, f'Вы исчерпали количество попыток ({quiz.attempts_limit}).')
+            return redirect('lesson_view', lesson_id=lesson.id)
+        
+        # Создать новую попытку
+        attempt = QuizAttempt.objects.create(student=request.user, quiz=quiz)
+        
+        # Получить вопросы
+        questions = quiz.questions.all()
+        if quiz.shuffle_questions:
+            import random
+            questions = list(questions)
+            random.shuffle(questions)
+        
+        context = {
+            'quiz': quiz,
+            'lesson': lesson,
+            'course': course,
+            'attempt': attempt,
+            'questions': questions,
+            'total_questions': questions.count(),
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def post(self, request, quiz_id):
+        quiz = get_object_or_404(Quiz, id=quiz_id)
+        attempt = QuizAttempt.objects.get(id=request.POST.get('attempt_id'))
+        
+        # Проверка безопасности
+        if attempt.student != request.user or attempt.quiz != quiz:
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+        
+        # Обработать ответы
+        total_points = 0
+        earned_points = 0
+        
+        for question in quiz.questions.all():
+            if question.type == 'text':
+                # Текстовый ответ (ручная проверка)
+                text_answer = request.POST.get(f'question_{question.id}', '')
+                UserAnswer.objects.create(
+                    attempt=attempt,
+                    question=question,
+                    text_answer=text_answer,
+                    is_correct=None,  # Будет проверен преподавателем
+                    points_earned=None
+                )
+            else:
+                # Выбор ответа (автоматическая проверка)
+                choice_id = request.POST.get(f'question_{question.id}')
+                
+                if choice_id:
+                    choice = get_object_or_404(QuestionChoice, id=choice_id)
+                    is_correct = choice.is_correct
+                    points = question.points if is_correct else 0
+                else:
+                    choice = None
+                    is_correct = False
+                    points = 0
+                
+                UserAnswer.objects.create(
+                    attempt=attempt,
+                    question=question,
+                    choice=choice,
+                    is_correct=is_correct,
+                    points_earned=points
+                )
+                earned_points += points
+            
+            total_points += question.points
+        
+        # Рассчитать результат
+        percentage = (earned_points / total_points * 100) if total_points > 0 else 0
+        is_passed = percentage >= quiz.pass_percentage
+        
+        attempt.completed_at = timezone.now()
+        attempt.score = earned_points
+        attempt.total_points = total_points
+        attempt.percentage = percentage
+        attempt.is_passed = is_passed
+        attempt.save()
+        
+        return redirect('quiz_results', attempt_id=attempt.id)
+
+
+class QuizResultsView(LoginRequiredMixin, DetailView):
+    """
+    Результаты теста студента
+    """
+    model = QuizAttempt
+    template_name = 'courses/quiz_results.html'
+    context_object_name = 'attempt'
+    pk_url_kwarg = 'attempt_id'
+    
+    def get_queryset(self):
+        return QuizAttempt.objects.filter(student=self.request.user)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        attempt = self.object
+        
+        context['quiz'] = attempt.quiz
+        context['lesson'] = attempt.quiz.lesson
+        context['course'] = attempt.quiz.lesson.section.course
+        context['answers'] = attempt.answers.select_related('question', 'choice').all()
+        context['show_answers'] = attempt.quiz.show_answers
+        
+        return context
+
+
+class InstructorQuizCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """
+    Преподаватель создает тест для урока
+    """
+    model = Quiz
+    form_class = QuizForm
+    template_name = 'courses/instructor/quiz_form.html'
+    
+    def test_func(self):
+        lesson_id = self.kwargs.get('lesson_id')
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        return lesson.section.course.instructor == self.request.user
+    
+    def form_valid(self, form):
+        lesson_id = self.kwargs.get('lesson_id')
+        form.instance.lesson = get_object_or_404(Lesson, id=lesson_id)
+        messages.success(self.request, 'Тест успешно создан!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('instructor_quiz_detail', kwargs={'quiz_id': self.object.id})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        lesson_id = self.kwargs.get('lesson_id')
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        context['lesson'] = lesson
+        context['course'] = lesson.section.course
+        return context
+
+
+class InstructorQuizDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    """
+    Управление тестом преподавателем
+    """
+    model = Quiz
+    template_name = 'courses/instructor/quiz_detail.html'
+    context_object_name = 'quiz'
+    pk_url_kwarg = 'quiz_id'
+    
+    def test_func(self):
+        quiz = self.get_object()
+        return quiz.lesson.section.course.instructor == self.request.user
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        quiz = self.object
+        
+        context['lesson'] = quiz.lesson
+        context['course'] = quiz.lesson.section.course
+        context['questions'] = quiz.questions.prefetch_related('choices').all()
+        context['total_questions'] = quiz.questions.count()
+        context['attempts'] = quiz.attempts.select_related('student').order_by('-started_at')[:10]
+        
+        return context
+
+
+class QuestionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """
+    Преподаватель добавляет вопрос в тест
+    """
+    model = Question
+    form_class = QuestionForm
+    template_name = 'courses/instructor/question_form.html'
+    
+    def test_func(self):
+        quiz_id = self.kwargs.get('quiz_id')
+        quiz = get_object_or_404(Quiz, id=quiz_id)
+        return quiz.lesson.section.course.instructor == self.request.user
+    
+    def form_valid(self, form):
+        quiz_id = self.kwargs.get('quiz_id')
+        quiz = get_object_or_404(Quiz, id=quiz_id)
+        form.instance.quiz = quiz
+        form.instance.order = quiz.questions.count() + 1
+        messages.success(self.request, 'Вопрос добавлен!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        quiz_id = self.kwargs.get('quiz_id')
+        return reverse('instructor_quiz_detail', kwargs={'quiz_id': quiz_id})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        quiz_id = self.kwargs.get('quiz_id')
+        quiz = get_object_or_404(Quiz, id=quiz_id)
+        context['quiz'] = quiz
+        context['lesson'] = quiz.lesson
+        context['course'] = quiz.lesson.section.course
+        return context

@@ -27,6 +27,15 @@ urlpatterns = [
     path('instructor/lesson/<int:lesson_id>/edit/', views.LessonUpdateView.as_view(), name='lesson_update'),
     path('instructor/lesson/<int:lesson_id>/delete/', views.LessonDeleteView.as_view(), name='lesson_delete'),
     
+    # Тесты (Студенты)
+    path('quiz/<int:quiz_id>/', views.QuizTakeView.as_view(), name='quiz_take'),
+    path('quiz/<int:attempt_id>/results/', views.QuizResultsView.as_view(), name='quiz_results'),
+    
+    # Тесты (Преподаватели)
+    path('instructor/lesson/<int:lesson_id>/quiz/create/', views.InstructorQuizCreateView.as_view(), name='quiz_create'),
+    path('instructor/quiz/<int:quiz_id>/', views.InstructorQuizDetailView.as_view(), name='instructor_quiz_detail'),
+    path('instructor/quiz/<int:quiz_id>/question/create/', views.QuestionCreateView.as_view(), name='question_create'),
+    
     # Детальная страница курса (должна быть в конце)
     path('<slug:slug>/', views.CourseDetailView.as_view(), name='course_detail'),
     path('<slug:slug>/enroll/', views.CourseEnrollView.as_view(), name='course_enroll'),

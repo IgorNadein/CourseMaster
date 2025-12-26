@@ -1,5 +1,5 @@
 from django import forms
-from .models import Course, Section, Lesson, Category
+from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice
 
 
 class CourseForm(forms.ModelForm):
@@ -171,3 +171,86 @@ class CoursePublishForm(forms.Form):
         label='Я подтверждаю, что курс готов к публикации',
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
+
+
+class QuizForm(forms.ModelForm):
+    """Форма создания/редактирования теста"""
+    
+    class Meta:
+        model = Quiz
+        fields = ['title', 'description', 'pass_percentage', 'time_limit_minutes', 
+                  'attempts_limit', 'shuffle_questions', 'show_answers']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Название теста'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Описание теста'
+            }),
+            'pass_percentage': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 0,
+                'max': 100
+            }),
+            'time_limit_minutes': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Оставьте пусто для неограниченного времени'
+            }),
+            'attempts_limit': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1
+            }),
+            'shuffle_questions': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'show_answers': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }
+
+
+class QuestionForm(forms.ModelForm):
+    """Форма создания/редактирования вопроса"""
+    
+    class Meta:
+        model = Question
+        fields = ['text', 'type', 'points', 'explanation']
+        widgets = {
+            'text': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Текст вопроса'
+            }),
+            'type': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'points': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1
+            }),
+            'explanation': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Объяснение (показывается после ответа)'
+            }),
+        }
+
+
+class QuestionChoiceForm(forms.ModelForm):
+    """Форма для варианта ответа"""
+    
+    class Meta:
+        model = QuestionChoice
+        fields = ['text', 'is_correct']
+        widgets = {
+            'text': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Текст варианта ответа'
+            }),
+            'is_correct': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }

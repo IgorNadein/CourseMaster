@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils.text import slugify
-from courses.models import Category, Course, Section, Lesson
+from courses.models import (Category, Course, Section, Lesson, Quiz, Question, QuestionChoice)
 
 
 class Command(BaseCommand):
@@ -236,12 +236,97 @@ class Command(BaseCommand):
                     if created:
                         self.stdout.write(f'    ✓ Урок "{lesson.title}" создан')
         
+        # Создать примеры тестов для уроков типа quiz
+        self.stdout.write('\n📝 Создание примеров тестов...')
+        
+        # Получить любые уроки для добавления тестов
+        quiz_lessons = Lesson.objects.all()[:3]
+        
+        for lesson_idx, lesson in enumerate(quiz_lessons, 1):
+            quiz, created = Quiz.objects.get_or_create(
+                lesson=lesson,
+                defaults={
+                    'title': f'Тест: {lesson.title}',
+                    'description': f'Проверьте ваши знания по теме "{lesson.title}"',
+                    'pass_percentage': 70,
+                    'attempts_limit': 3,
+                    'shuffle_questions': True,
+                    'show_answers': True
+                }
+            )
+            
+            if created:
+                self.stdout.write(f'  ✓ Тест "{quiz.title}" создан')
+                
+                # Добавить примеры вопросов
+                questions_data = [
+                    {
+                        'text': 'Какой является основной концепция?',
+                        'type': 'single',
+                        'points': 1,
+                        'explanation': 'Правильный ответ: правильный вариант',
+                        'choices': [
+                            {'text': 'Вариант 1', 'is_correct': False},
+                            {'text': 'Вариант 2', 'is_correct': True},
+                            {'text': 'Вариант 3', 'is_correct': False},
+                        ]
+                    },
+                    {
+                        'text': 'Выберите все правильные варианты',
+                        'type': 'multiple',
+                        'points': 2,
+                        'explanation': 'Может быть несколько правильных ответов',
+                        'choices': [
+                            {'text': 'Первый правильный', 'is_correct': True},
+                            {'text': 'Неправильный', 'is_correct': False},
+                            {'text': 'Второй правильный', 'is_correct': True},
+                        ]
+                    },
+                    {
+                        'text': 'Это верное утверждение?',
+                        'type': 'true_false',
+                        'points': 1,
+                        'explanation': 'Это верное утверждение',
+                        'choices': [
+                            {'text': 'Верно', 'is_correct': True},
+                            {'text': 'Неверно', 'is_correct': False},
+                        ]
+                    },
+                ]
+                
+                for q_idx, q_data in enumerate(questions_data, 1):
+                    question, q_created = Question.objects.get_or_create(
+                        quiz=quiz,
+                        text=q_data['text'],
+                        defaults={
+                            'type': q_data['type'],
+                            'points': q_data['points'],
+                            'explanation': q_data['explanation'],
+                            'order': q_idx
+                        }
+                    )
+                    
+                    if q_created:
+                        # Добавить варианты ответов
+                        for choice_idx, choice_data in enumerate(q_data['choices'], 1):
+                            QuestionChoice.objects.get_or_create(
+                                question=question,
+                                text=choice_data['text'],
+                                defaults={
+                                    'is_correct': choice_data['is_correct'],
+                                    'order': choice_idx
+                                }
+                            )
+                        self.stdout.write(f'    ✓ Вопрос "{q_data["text"][:50]}..." добавлен')
+        
         self.stdout.write(self.style.SUCCESS('\n✅ Тестовые данные успешно созданы!'))
         self.stdout.write(f'\n📊 Статистика:')
         self.stdout.write(f'  - Категорий: {Category.objects.count()}')
         self.stdout.write(f'  - Курсов: {Course.objects.count()}')
         self.stdout.write(f'  - Разделов: {Section.objects.count()}')
         self.stdout.write(f'  - Уроков: {Lesson.objects.count()}')
+        self.stdout.write(f'  - Тестов: {Quiz.objects.count()}')
+        self.stdout.write(f'  - Вопросов: {Question.objects.count()}')
         
         self.stdout.write(f'\n👤 Данные для входа:')
         self.stdout.write(f'  - Username: teacher')

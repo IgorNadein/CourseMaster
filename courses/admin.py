@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review
+from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer
 
 
 @admin.register(Category)
@@ -92,4 +92,56 @@ class LessonProgressAdmin(admin.ModelAdmin):
     list_filter = ['completed', 'completed_at']
     search_fields = ['enrollment__student__username', 'lesson__title']
     readonly_fields = ['completed_at']
+
+
+class QuestionChoiceInline(admin.TabularInline):
+    model = QuestionChoice
+    extra = 2
+    fields = ['text', 'is_correct', 'order']
+
+
+class QuestionInline(admin.TabularInline):
+    model = Question
+    extra = 1
+    fields = ['text', 'type', 'order', 'points']
+
+
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    list_display = ['title', 'lesson', 'pass_percentage', 'created_at']
+    list_filter = ['pass_percentage', 'created_at']
+    search_fields = ['title', 'lesson__title']
+    inlines = [QuestionInline]
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = ['text', 'quiz', 'type', 'order', 'points']
+    list_filter = ['type', 'quiz']
+    search_fields = ['text', 'quiz__title']
+    inlines = [QuestionChoiceInline]
+
+
+@admin.register(QuestionChoice)
+class QuestionChoiceAdmin(admin.ModelAdmin):
+    list_display = ['text', 'question', 'is_correct', 'order']
+    list_filter = ['is_correct']
+    search_fields = ['text', 'question__text']
+
+
+@admin.register(QuizAttempt)
+class QuizAttemptAdmin(admin.ModelAdmin):
+    list_display = ['student', 'quiz', 'started_at', 'completed_at', 'percentage', 'is_passed']
+    list_filter = ['is_passed', 'started_at']
+    search_fields = ['student__username', 'quiz__title']
+    readonly_fields = ['started_at', 'completed_at']
+
+
+@admin.register(UserAnswer)
+class UserAnswerAdmin(admin.ModelAdmin):
+    list_display = ['attempt', 'question', 'is_correct', 'points_earned', 'answered_at']
+    list_filter = ['is_correct', 'answered_at']
+    search_fields = ['attempt__student__username', 'question__text']
+    readonly_fields = ['answered_at']
 
