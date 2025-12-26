@@ -1,5 +1,5 @@
 from django import forms
-from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice
+from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, AssignmentSubmission
 
 
 class CourseForm(forms.ModelForm):
@@ -252,5 +252,72 @@ class QuestionChoiceForm(forms.ModelForm):
             }),
             'is_correct': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
+            }),
+        }
+
+
+class AssignmentForm(forms.ModelForm):
+    """Форма создания/редактирования домашнего задания"""
+    
+    class Meta:
+        model = Assignment
+        fields = ['title', 'description', 'max_points', 'due_date']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Название задания'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Описание задания для студентов'
+            }),
+            'max_points': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'value': '100'
+            }),
+            'due_date': forms.DateTimeInput(attrs={
+                'class': 'form-control',
+                'type': 'datetime-local'
+            }),
+        }
+
+
+class AssignmentSubmissionForm(forms.ModelForm):
+    """Форма отправки домашнего задания студентом"""
+    
+    class Meta:
+        model = AssignmentSubmission
+        fields = ['submitted_text', 'submitted_file']
+        widgets = {
+            'submitted_text': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Введите ваш ответ здесь...'
+            }),
+            'submitted_file': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
+        }
+
+
+class AssignmentGradeForm(forms.ModelForm):
+    """Форма проверки и оценки домашнего задания преподавателем"""
+    
+    class Meta:
+        model = AssignmentSubmission
+        fields = ['status', 'points_earned', 'teacher_comment']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'points_earned': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0'
+            }),
+            'teacher_comment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Ваш комментарий к работе студента...'
             }),
         }

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer
+from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission
 
 
 @admin.register(Category)
@@ -144,4 +144,55 @@ class UserAnswerAdmin(admin.ModelAdmin):
     list_filter = ['is_correct', 'answered_at']
     search_fields = ['attempt__student__username', 'question__text']
     readonly_fields = ['answered_at']
+
+
+class AssignmentSubmissionInline(admin.TabularInline):
+    model = AssignmentSubmission
+    extra = 0
+    fields = ['student', 'submitted_at', 'status', 'points_earned', 'graded_at']
+    readonly_fields = ['student', 'submitted_at', 'graded_at']
+    can_delete = False
+
+
+@admin.register(Assignment)
+class AssignmentAdmin(admin.ModelAdmin):
+    list_display = ['title', 'lesson', 'max_points', 'due_date', 'created_at']
+    list_filter = ['due_date', 'created_at', 'lesson__section__course']
+    search_fields = ['title', 'lesson__title', 'lesson__section__course__title']
+    inlines = [AssignmentSubmissionInline]
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('lesson', 'title', 'description')
+        }),
+        ('Settings', {
+            'fields': ('max_points', 'due_date')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+
+
+@admin.register(AssignmentSubmission)
+class AssignmentSubmissionAdmin(admin.ModelAdmin):
+    list_display = ['student', 'assignment', 'submitted_at', 'status', 'points_earned', 'is_late']
+    list_filter = ['status', 'submitted_at', 'graded_at']
+    search_fields = ['student__username', 'assignment__title', 'teacher_comment']
+    readonly_fields = ['submitted_at', 'graded_at']
+    
+    fieldsets = (
+        ('Submission', {
+            'fields': ('assignment', 'student', 'submitted_at', 'submitted_file', 'submitted_text')
+        }),
+        ('Grading', {
+            'fields': ('status', 'points_earned', 'teacher_comment', 'graded_at')
+        }),
+    )
+    
+    def is_late(self, obj):
+        return obj.is_late
+    is_late.boolean = True
+    is_late.short_description = 'Late'
 

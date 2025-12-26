@@ -79,6 +79,28 @@
                 </div>
                 {% endif %}
 
+                <!-- Домашнее задание -->
+                {% if lesson.assignment %}
+                <div class="mb-4">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-clipboard-check"></i> {{ lesson.assignment.title }}
+                            </h5>
+                            <p class="card-text text-muted small">
+                                Максимум баллов: {{ lesson.assignment.max_points }}
+                                {% if lesson.assignment.due_date %}
+                                • Дедлайн: {{ lesson.assignment.due_date|date:"d.m.Y H:i" }}
+                                {% endif %}
+                            </p>
+                            <a href="{% url 'assignment_submit' lesson.assignment.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-upload"></i> Отправить задание
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Навигация между уроками -->
                 <div class="d-flex justify-content-between mt-4">
                     {% if previous_lesson %}

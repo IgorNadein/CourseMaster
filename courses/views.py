@@ -8,8 +8,9 @@ from django.utils import timezone
 from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
-                     Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer)
-from .forms import CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, QuestionChoiceForm
+                     Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission)
+from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
+                    QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm)
 
 
 class CourseListView(ListView):
@@ -916,3 +917,193 @@ class QuestionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         context['lesson'] = quiz.lesson
         context['course'] = quiz.lesson.section.course
         return context
+
+
+# ============================================================
+# ASSIGNMENT/HOMEWORK VIEWS (Система домашних заданий)
+# ============================================================
+
+class AssignmentSubmitView(LoginRequiredMixin, CreateView):
+    """
+    Студент отправляет домашнее задание
+    """
+    model = AssignmentSubmission
+    form_class = AssignmentSubmissionForm
+    template_name = 'courses/assignment_submit.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        assignment_id = self.kwargs.get('assignment_id')
+        assignment = get_object_or_404(Assignment, id=assignment_id)
+        lesson = assignment.lesson
+        course = lesson.section.course
+        
+        context['assignment'] = assignment
+        context['lesson'] = lesson
+        context['course'] = course
+        
+        # Проверка: студент записан на курс?
+        try:
+            enrollment = Enrollment.objects.get(student=self.request.user, course=course)
+            context['is_enrolled'] = True
+        except Enrollment.DoesNotExist:
+            context['is_enrolled'] = False
+        
+        # Попыталась ли студент уже отправить задание?
+        try:
+            submission = AssignmentSubmission.objects.get(
+                assignment=assignment,
+                student=self.request.user
+            )
+            context['existing_submission'] = submission
+        except AssignmentSubmission.DoesNotExist:
+            context['existing_submission'] = None
+        
+        return context
+    
+    def form_valid(self, form):
+        assignment_id = self.kwargs.get('assignment_id')
+        assignment = get_object_or_404(Assignment, id=assignment_id)
+        
+        # Проверка: студент записан на курс?
+        try:
+            enrollment = Enrollment.objects.get(
+                student=self.request.user,
+                course=assignment.lesson.section.course
+            )
+        except Enrollment.DoesNotExist:
+            messages.error(self.request, 'Вы не записаны на этот курс.')
+            return self.form_invalid(form)
+        
+        # Проверка: уже ли отправлено?
+        try:
+            existing = AssignmentSubmission.objects.get(
+                assignment=assignment,
+                student=self.request.user
+            )
+            # Обновить существующую отправку
+            form.instance = existing
+        except AssignmentSubmission.DoesNotExist:
+            pass
+        
+        form.instance.assignment = assignment
+        form.instance.student = self.request.user
+        form.instance.status = 'submitted'
+        messages.success(self.request, 'Задание успешно отправлено!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        assignment_id = self.kwargs.get('assignment_id')
+        assignment = get_object_or_404(Assignment, id=assignment_id)
+        return reverse('lesson_view', kwargs={'lesson_id': assignment.lesson.id})
+
+
+class InstructorAssignmentGradeView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    """
+    Преподаватель проверяет и оценивает домашнее задание
+    """
+    model = AssignmentSubmission
+    template_name = 'courses/instructor/assignment_grade.html'
+    context_object_name = 'submission'
+    pk_url_kwarg = 'submission_id'
+    
+    def test_func(self):
+        submission = self.get_object()
+        return submission.assignment.lesson.section.course.instructor == self.request.user
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        submission = self.object
+        assignment = submission.assignment
+        
+        context['assignment'] = assignment
+        context['lesson'] = assignment.lesson
+        context['course'] = assignment.lesson.section.course
+        context['form'] = AssignmentGradeForm(instance=submission)
+        
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        submission = self.get_object()
+        form = AssignmentGradeForm(request.POST, instance=submission)
+        
+        if form.is_valid():
+            form.instance.status = form.cleaned_data['status']
+            form.instance.points_earned = form.cleaned_data['points_earned']
+            form.instance.teacher_comment = form.cleaned_data['teacher_comment']
+            form.instance.graded_at = timezone.now()
+            form.save()
+            
+            messages.success(request, f'Задание студента "{submission.student.get_full_name}" оценено!')
+            return redirect('instructor_assignment_detail', assignment_id=submission.assignment.id)
+        
+        context = self.get_context_data(**kwargs)
+        context['form'] = form
+        return self.render_to_response(context)
+
+
+class InstructorAssignmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    """
+    Просмотр всех отправок домашнего задания преподавателем
+    """
+    model = Assignment
+    template_name = 'courses/instructor/assignment_detail.html'
+    context_object_name = 'assignment'
+    pk_url_kwarg = 'assignment_id'
+    
+    def test_func(self):
+        assignment = self.get_object()
+        return assignment.lesson.section.course.instructor == self.request.user
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        assignment = self.object
+        
+        context['lesson'] = assignment.lesson
+        context['course'] = assignment.lesson.section.course
+        context['submissions'] = assignment.submissions.select_related('student').order_by('-submitted_at')
+        context['total_submissions'] = assignment.submissions.count()
+        context['graded_submissions'] = assignment.submissions.filter(status='graded').count()
+        
+        # Статистика оценок
+        graded = assignment.submissions.filter(status='graded', points_earned__isnull=False)
+        if graded.exists():
+            from django.db.models import Avg
+            avg_score = graded.aggregate(Avg('points_earned'))['points_earned__avg']
+            context['avg_score'] = round(avg_score, 2) if avg_score else 0
+        else:
+            context['avg_score'] = 0
+        
+        return context
+
+
+class InstructorAssignmentCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """
+    Преподаватель создает домашнее задание для урока
+    """
+    model = Assignment
+    form_class = AssignmentForm
+    template_name = 'courses/instructor/assignment_form.html'
+    
+    def test_func(self):
+        lesson_id = self.kwargs.get('lesson_id')
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        return lesson.section.course.instructor == self.request.user
+    
+    def form_valid(self, form):
+        lesson_id = self.kwargs.get('lesson_id')
+        form.instance.lesson = get_object_or_404(Lesson, id=lesson_id)
+        messages.success(self.request, 'Задание успешно создано!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('instructor_assignment_detail', kwargs={'assignment_id': self.object.id})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        lesson_id = self.kwargs.get('lesson_id')
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        context['lesson'] = lesson
+        context['course'] = lesson.section.course
+        return context
+

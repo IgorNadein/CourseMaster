@@ -305,3 +305,76 @@ class UserAnswer(models.Model):
     
     def __str__(self):
         return f"{self.attempt.student.username} - {self.question.text[:30]}"
+
+
+class Assignment(models.Model):
+    """
+    Домашнее задание в уроке
+    Студент отправляет работу, преподаватель проверяет и выставляет оценку
+    """
+    lesson = models.OneToOneField(Lesson, on_delete=models.CASCADE, related_name='assignment')
+    title = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True, help_text="Описание задания для студентов")
+    max_points = models.PositiveIntegerField(default=100, help_text="Максимальное количество баллов")
+    due_date = models.DateTimeField(null=True, blank=True, help_text="Дедлайн для сдачи")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Assignment"
+        verbose_name_plural = "Assignments"
+    
+    def __str__(self):
+        return f"Assignment: {self.lesson.title}"
+
+
+class AssignmentSubmission(models.Model):
+    """
+    Отправка домашнего задания студентом
+    """
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+        ('graded', 'Graded'),
+        ('returned', 'Returned for revision'),
+    ]
+    
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assignment_submissions')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    submitted_file = models.FileField(upload_to='assignments/submissions/', blank=True, null=True)
+    submitted_text = models.TextField(blank=True, help_text="Текстовый ответ")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
+    
+    # Оценка
+    points_earned = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        null=True, 
+        blank=True, 
+        help_text="Баллы за задание"
+    )
+    teacher_comment = models.TextField(blank=True, help_text="Комментарий преподавателя")
+    graded_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['assignment', 'student']
+        ordering = ['-submitted_at']
+    
+    def __str__(self):
+        return f"{self.student.username} - {self.assignment.lesson.title}"
+    
+    @property
+    def is_overdue(self):
+        """Проверить, прошел ли дедлайн"""
+        if not self.assignment.due_date:
+            return False
+        from django.utils import timezone
+        return timezone.now() > self.assignment.due_date
+    
+    @property
+    def is_late(self):
+        """Проверить, была ли работа отправлена после дедлайна"""
+        if not self.assignment.due_date:
+            return False
+        return self.submitted_at > self.assignment.due_date
+
