@@ -1,235 +1,186 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Каталог курсов - CourseMaster{% endblock %}
 
-{% block content %}
-<div class="container mt-4">
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/courses.css' %}">
+{% endblock %}
+
+{% block body_content %}
+<div class="container">
     <!-- Заголовок -->
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="display-4">Каталог курсов</h1>
-            <p class="lead text-muted">Выберите курс и начните обучение прямо сейчас</p>
-        </div>
+    <div style="margin-bottom: 30px;">
+        <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 10px;">Каталог курсов</h1>
+        <p style="font-size: 16px; color: #6a6f73;">Выберите курс и начните обучение прямо сейчас</p>
     </div>
 
     <!-- Поиск и фильтры -->
-    <div class="row mb-4">
-        <div class="col">
-            <form method="get" class="row g-3">
-                <!-- Поиск -->
-                <div class="col-md-4">
-                    <input type="text" name="q" class="form-control" placeholder="Поиск курсов..." value="{{ search_query }}">
-                </div>
+    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <form method="get" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; grid-template-columns: 2fr 1fr 1fr auto;">
+            <!-- Поиск -->
+            <input type="text" name="q" placeholder="Поиск курсов..." value="{{ search_query }}" style="padding: 10px 15px; border: 1px solid #e8e9eb; border-radius: 4px; font-size: 14px;">
 
-                <!-- Категория -->
-                <div class="col-md-2">
-                    <select name="category" class="form-select">
-                        <option value="">Все категории</option>
-                        {% for cat in categories %}
-                        <option value="{{ cat.slug }}" {% if current_category == cat.slug %}selected{% endif %}>
-                            {{ cat.icon }} {{ cat.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+            <!-- Категория -->
+            <select name="category" style="padding: 10px 15px; border: 1px solid #e8e9eb; border-radius: 4px; font-size: 14px;">
+                <option value="">Все категории</option>
+                {% for cat in categories %}
+                <option value="{{ cat.slug }}" {% if current_category == cat.slug %}selected{% endif %}>
+                    {{ cat.icon }} {{ cat.name }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <!-- Уровень -->
+            <select name="level" style="padding: 10px 15px; border: 1px solid #e8e9eb; border-radius: 4px; font-size: 14px;">
+                <option value="">Все уровни</option>
+                <option value="beginner" {% if current_level == 'beginner' %}selected{% endif %}>Начальный</option>
+                <option value="intermediate" {% if current_level == 'intermediate' %}selected{% endif %}>Средний</option>
+                <option value="advanced" {% if current_level == 'advanced' %}selected{% endif %}>Продвинутый</option>
+            </select>
+
+            <!-- Цена -->
+            <select name="price" style="padding: 10px 15px; border: 1px solid #e8e9eb; border-radius: 4px; font-size: 14px;">
+                <option value="">Любая цена</option>
+                <option value="free" {% if current_price == 'free' %}selected{% endif %}>Бесплатные</option>
+                <option value="paid" {% if current_price == 'paid' %}selected{% endif %}>Платные</option>
+            </select>
+
+            <!-- Кнопка поиска -->
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Искать</button>
+        </form>
+    </div>
+
+    <!-- Сортировка -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <p style="color: #6a6f73;">Найдено курсов: <strong>{{ page_obj.paginator.count }}</strong></p>
+        <div style="display: flex; gap: 10px;">
+            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=-created_at" 
+               class="btn {% if sort_by == '-created_at' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px;">
+                Новые
+            </a>
+            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=-students_count" 
+               class="btn {% if sort_by == '-students_count' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px;">
+                Популярные
+            </a>
+            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=-average_rating" 
+               class="btn {% if sort_by == '-average_rating' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px;">
+                По рейтингу
+            </a>
+        </div>
+    </div>
+
+    <!-- Список курсов сеткой -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; margin-bottom: 40px;">
+        {% for course in courses %}
+        {% if course.slug %}
+        <div class="course-card">
+            <!-- Изображение -->
+            {% if course.thumbnail %}
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" class="course-card-image">
+            {% else %}
+            <div class="course-card-image" style="display: flex; align-items: center; justify-content: center; font-size: 48px;">📚</div>
+            {% endif %}
+
+            <!-- Теги категории и статус -->
+            <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                {% if course.category %}
+                <span style="background: #5624d0; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                    {{ course.category.name }}
+                </span>
+                {% endif %}
+                {% if user.is_authenticated and course.id in my_enrollments %}
+                <span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                    Записан
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="course-card-body">
+                <!-- Заголовок -->
+                <h3 class="course-card-title">
+                    <a href="{% url 'course_detail' course.slug %}">{{ course.title }}</a>
+                </h3>
+
+                <!-- Преподаватель -->
+                <p class="course-card-instructor">
+                    👨‍🏫 {{ course.instructor.get_full_name|default:course.instructor.username }}
+                </p>
+
+                <!-- Метрики -->
+                <div class="course-card-meta">
+                    <span class="course-rating">
+                        ⭐ <span class="course-rating-stars">{{ course.average_rating|floatformat:1 }}</span>
+                    </span>
+                    <span>👥 {{ course.students_count }}</span>
+                    <span>⏱️ {{ course.duration_hours }}ч</span>
                 </div>
 
                 <!-- Уровень -->
-                <div class="col-md-2">
-                    <select name="level" class="form-select">
-                        <option value="">Все уровни</option>
-                        <option value="beginner" {% if current_level == 'beginner' %}selected{% endif %}>Начальный</option>
-                        <option value="intermediate" {% if current_level == 'intermediate' %}selected{% endif %}>Средний</option>
-                        <option value="advanced" {% if current_level == 'advanced' %}selected{% endif %}>Продвинутый</option>
-                    </select>
+                <div style="margin-bottom: 15px;">
+                    <span style="background: #f0f0f0; padding: 6px 12px; border-radius: 4px; font-size: 12px; color: #6a6f73;">
+                        {{ course.get_level_display }}
+                    </span>
                 </div>
 
-                <!-- Цена -->
-                <div class="col-md-2">
-                    <select name="price" class="form-select">
-                        <option value="">Любая цена</option>
-                        <option value="free" {% if current_price == 'free' %}selected{% endif %}>Бесплатные</option>
-                        <option value="paid" {% if current_price == 'paid' %}selected{% endif %}>Платные</option>
-                    </select>
-                </div>
-
-                <!-- Кнопка поиска -->
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Искать
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Сортировка и результаты -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <p class="text-muted">
-                Найдено курсов: <strong>{{ page_obj.paginator.count }}</strong>
-            </p>
-        </div>
-        <div class="col-md-6 text-end">
-            <div class="btn-group">
-                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=-created_at" 
-                   class="btn btn-sm btn-outline-secondary {% if sort_by == '-created_at' %}active{% endif %}">
-                    Новые
-                </a>
-                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=-students_count" 
-                   class="btn btn-sm btn-outline-secondary {% if sort_by == '-students_count' %}active{% endif %}">
-                    Популярные
-                </a>
-                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=-average_rating" 
-                   class="btn btn-sm btn-outline-secondary {% if sort_by == '-average_rating' %}active{% endif %}">
-                    Рейтинг
-                </a>
-                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}sort=price" 
-                   class="btn btn-sm btn-outline-secondary {% if sort_by == 'price' %}active{% endif %}">
-                    Цена ↑
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Список курсов -->
-    <div class="row">
-        {% for course in courses %}
-        {% if course.slug %}
-        <div class="col-md-4 mb-4">
-            <div class="card h-100 shadow-sm hover-shadow">
-                <!-- Изображение -->
-                {% if course.thumbnail %}
-                <img src="{{ course.thumbnail.url }}" class="card-img-top" alt="{{ course.title }}" style="height: 200px; object-fit: cover;">
-                {% else %}
-                <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
-                    <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
-                </div>
-                {% endif %}
-
-                <!-- Бейдж категории -->
-                {% if course.category %}
-                <span class="position-absolute top-0 end-0 m-2">
-                    <span class="badge bg-primary">{{ course.category.icon }} {{ course.category.name }}</span>
-                </span>
-                {% endif %}
-
-                <div class="card-body d-flex flex-column">
-                    <!-- Заголовок -->
-                    <h5 class="card-title">
-                        <a href="{% url 'course_detail' course.slug %}" class="text-decoration-none text-dark">
-                            {{ course.title }}
-                        </a>
-                    </h5>
-
-                    <!-- Подзаголовок -->
-                    {% if course.subtitle %}
-                    <p class="card-text text-muted small">{{ course.subtitle|truncatewords:15 }}</p>
-                    {% endif %}
-
-                    <!-- Преподаватель -->
-                    <p class="small text-muted mb-2">
-                        <i class="bi bi-person"></i> {{ course.instructor.get_full_name|default:course.instructor.username }}
-                    </p>
-
-                    <!-- Метрики -->
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-muted">
-                            <i class="bi bi-star-fill text-warning"></i> {{ course.average_rating|floatformat:1 }}
-                        </small>
-                        <small class="text-muted">
-                            <i class="bi bi-people"></i> {{ course.students_count }}
-                        </small>
-                        <small class="text-muted">
-                            <i class="bi bi-clock"></i> {{ course.duration_hours }}ч
-                        </small>
-                    </div>
-
-                    <!-- Уровень -->
-                    <div class="mb-3">
-                        <span class="badge bg-secondary">{{ course.get_level_display }}</span>
-                    </div>
-
-                    <!-- Футер карточки -->
-                    <div class="mt-auto">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <!-- Цена -->
-                            <div>
-                                {% if course.is_free %}
-                                <h5 class="text-success mb-0">Бесплатно</h5>
-                                {% else %}
-                                {% if course.has_discount %}
-                                <h5 class="mb-0">{{ course.current_price }} ₽</h5>
-                                <small class="text-muted"><s>{{ course.price }} ₽</s></small>
-                                {% else %}
-                                <h5 class="mb-0">{{ course.price }} ₽</h5>
-                                {% endif %}
-                                {% endif %}
-                            </div>
-
-                            <!-- Статус записи -->
-                            {% if user.is_authenticated and course.id in my_enrollments %}
-                            <span class="badge bg-success">Записан</span>
-                            {% endif %}
-                        </div>
-
-                        <!-- Кнопка -->
-                        <a href="{% url 'course_detail' course.slug %}" class="btn btn-primary w-100 mt-2">
-                            Подробнее
-                        </a>
+                <!-- Цена и кнопка -->
+                <div class="course-card-footer">
+                    <div>
+                        {% if course.is_free %}
+                        <div class="course-price" style="color: #28a745;">Бесплатно</div>
+                        {% else %}
+                        {% if course.has_discount %}
+                        <div class="course-price">{{ course.current_price }} ₽</div>
+                        <span class="course-price-old">{{ course.price }} ₽</span>
+                        {% else %}
+                        <div class="course-price">{{ course.price }} ₽</div>
+                        {% endif %}
+                        {% endif %}
                     </div>
                 </div>
+
+                <!-- Кнопка -->
+                <a href="{% url 'course_detail' course.slug %}" class="btn btn-primary" style="width: 100%; margin-top: 15px;">
+                    Подробнее
+                </a>
             </div>
         </div>
         {% endif %}
         {% empty %}
-        <div class="col-12">
-            <div class="alert alert-info text-center">
-                <i class="bi bi-info-circle"></i> Курсы не найдены. Попробуйте изменить параметры поиска.
-            </div>
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #f7f9fa; border-radius: 8px;">
+            <p style="font-size: 16px; color: #6a6f73;">📭 Курсы не найдены. Попробуйте изменить параметры поиска.</p>
         </div>
         {% endfor %}
     </div>
 
     <!-- Пагинация -->
     {% if page_obj.has_other_pages %}
-    <nav aria-label="Навигация по страницам">
-        <ul class="pagination justify-content-center">
+    <nav style="text-align: center; margin-top: 40px;">
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
             {% if page_obj.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}{% if sort_by %}sort={{ sort_by }}&{% endif %}page={{ page_obj.previous_page_number }}">
-                    Назад
-                </a>
-            </li>
+            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}{% if sort_by %}sort={{ sort_by }}&{% endif %}page={{ page_obj.previous_page_number }}"
+               class="btn btn-secondary">← Назад</a>
             {% endif %}
 
             {% for num in page_obj.paginator.page_range %}
-            {% if page_obj.number == num %}
-            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-            <li class="page-item">
-                <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}{% if sort_by %}sort={{ sort_by }}&{% endif %}page={{ num }}">
-                    {{ num }}
-                </a>
-            </li>
-            {% endif %}
+                {% if page_obj.number == num %}
+                <span class="btn btn-primary" style="cursor: default;">{{ num }}</span>
+                {% else %}
+                <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}{% if sort_by %}sort={{ sort_by }}&{% endif %}page={{ num }}"
+                   class="btn btn-secondary">{{ num }}</a>
+                {% endif %}
             {% endfor %}
 
             {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}{% if sort_by %}sort={{ sort_by }}&{% endif %}page={{ page_obj.next_page_number }}">
-                    Вперед
-                </a>
-            </li>
+            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if current_category %}category={{ current_category }}&{% endif %}{% if current_level %}level={{ current_level }}&{% endif %}{% if current_price %}price={{ current_price }}&{% endif %}{% if sort_by %}sort={{ sort_by }}&{% endif %}page={{ page_obj.next_page_number }}"
+               class="btn btn-secondary">Далее →</a>
             {% endif %}
-        </ul>
+        </div>
     </nav>
     {% endif %}
 </div>
+{% endblock %}
 
-<style>
-.hover-shadow:hover {
-    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
-    transition: box-shadow .3s ease-in-out;
-}
-</style>
+{% block extra_js %}
+<script src="{% static 'js/main.js' %}"></script>
 {% endblock %}
