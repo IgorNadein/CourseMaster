@@ -8,6 +8,12 @@ urlpatterns = [
     path('lesson/<int:lesson_id>/', views.LessonView.as_view(), name='lesson_view'),
     path('lesson/<int:lesson_id>/complete/', views.LessonCompleteView.as_view(), name='lesson_complete'),
     
+    # Комментарии к урокам
+    path('lesson/<int:lesson_id>/comment/', views.LessonCommentCreateView.as_view(), name='lesson_comment_create'),
+    path('comment/<int:comment_id>/edit/', views.LessonCommentUpdateView.as_view(), name='lesson_comment_update'),
+    path('comment/<int:comment_id>/delete/', views.LessonCommentDeleteView.as_view(), name='lesson_comment_delete'),
+    path('comment/<int:comment_id>/pin/', views.InstructorCommentPinView.as_view(), name='lesson_comment_pin'),
+    
     # Сертификаты
     path('certificates/', views.MyCertificatesView.as_view(), name='my_certificates'),
     path('certificate/<str:certificate_number>/', views.CertificateDetailView.as_view(), name='certificate_detail'),

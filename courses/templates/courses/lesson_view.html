@@ -101,6 +101,194 @@
                 </div>
                 {% endif %}
 
+                <!-- Обсуждение урока -->
+                <div class="mb-4 mt-5" id="comments">
+                    <h5 class="mb-4">
+                        <i class="bi bi-chat-dots"></i> Обсуждение 
+                        <span class="badge bg-secondary">{{ comments_count }}</span>
+                    </h5>
+
+                    <!-- Форма добавления комментария -->
+                    {% if can_comment %}
+                    <div class="card border-0 bg-light mb-4">
+                        <div class="card-body">
+                            <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <textarea name="content" class="form-control" rows="3" 
+                                              placeholder="Напишите ваш вопрос или комментарий..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-send"></i> Отправить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Записывайтесь на курс, чтобы участвовать в обсуждении.
+                    </div>
+                    {% endif %}
+
+                    <!-- Список комментариев -->
+                    {% if comments %}
+                    <div class="comments-list">
+                        {% for comment in comments %}
+                        <div class="card mb-3 {% if comment.is_pinned %}border-warning{% else %}border-0{% endif %} bg-light">
+                            <div class="card-body">
+                                <!-- Заголовок комментария -->
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                             style="width: 40px; height: 40px;">
+                                            {{ comment.author.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                                            {% if comment.author == course.instructor %}
+                                            <span class="badge bg-primary ms-1">Преподаватель</span>
+                                            {% endif %}
+                                            {% if comment.is_pinned %}
+                                            <span class="badge bg-warning text-dark ms-1">
+                                                <i class="bi bi-pin-fill"></i> Закреплено
+                                            </span>
+                                            {% endif %}
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ comment.created_at|date:"d.m.Y H:i" }}
+                                                {% if comment.is_edited %}
+                                                <span class="fst-italic">(изменено)</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown">
+                                        {% if comment.author == request.user or course.instructor == request.user %}
+                                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if comment.author == request.user %}
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'lesson_comment_update' comment.id %}">
+                                                    <i class="bi bi-pencil"></i> Редактировать
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' comment.id %}">
+                                                    <i class="bi bi-trash"></i> Удалить
+                                                </a>
+                                            </li>
+                                            {% if course.instructor == request.user %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="{% url 'lesson_comment_pin' comment.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-pin"></i> 
+                                                        {% if comment.is_pinned %}Открепить{% else %}Закрепить{% endif %}
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Текст комментария -->
+                                <p class="mb-2">{{ comment.content|linebreaks }}</p>
+
+                                <!-- Кнопка ответа -->
+                                {% if can_comment %}
+                                <button class="btn btn-sm btn-link text-muted p-0 reply-toggle" 
+                                        data-comment-id="{{ comment.id }}">
+                                    <i class="bi bi-reply"></i> Ответить
+                                </button>
+
+                                <!-- Форма ответа (скрыта по умолчанию) -->
+                                <div class="reply-form mt-2" id="reply-form-{{ comment.id }}" style="display: none;">
+                                    <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="reply_to" value="{{ comment.id }}">
+                                        <div class="mb-2">
+                                            <textarea name="content" class="form-control form-control-sm" rows="2" 
+                                                      placeholder="Написать ответ..." required></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-send"></i> Ответить
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm reply-cancel" 
+                                                data-comment-id="{{ comment.id }}">
+                                            Отмена
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+
+                                <!-- Ответы на комментарий -->
+                                {% if comment.replies.all %}
+                                <div class="replies mt-3 ps-4 border-start">
+                                    {% for reply in comment.replies.all %}
+                                    <div class="reply mb-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 30px; height: 30px; font-size: 0.75rem;">
+                                                    {{ reply.author.username|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <strong class="small">{{ reply.author.get_full_name|default:reply.author.username }}</strong>
+                                                    {% if reply.author == course.instructor %}
+                                                    <span class="badge bg-primary" style="font-size: 0.6rem;">Преподаватель</span>
+                                                    {% endif %}
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        {{ reply.created_at|date:"d.m.Y H:i" }}
+                                                        {% if reply.is_edited %}<span class="fst-italic">(изм.)</span>{% endif %}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            {% if reply.author == request.user or course.instructor == request.user %}
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    {% if reply.author == request.user %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'lesson_comment_update' reply.id %}">
+                                                            <i class="bi bi-pencil"></i> Редактировать
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' reply.id %}">
+                                                            <i class="bi bi-trash"></i> Удалить
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mb-0 small">{{ reply.content|linebreaks }}</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                        <p class="mt-2">Пока нет комментариев. Будьте первым!</p>
+                    </div>
+                    {% endif %}
+                </div>
+
                 <!-- Навигация между уроками -->
                 <div class="d-flex justify-content-between mt-4">
                     {% if previous_lesson %}
@@ -168,4 +356,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Переключение форм ответа на комментарии
+    document.querySelectorAll('.reply-toggle').forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.dataset.commentId;
+            const form = document.getElementById('reply-form-' + commentId);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            if (form.style.display === 'block') {
+                form.querySelector('textarea').focus();
+            }
+        });
+    });
+
+    document.querySelectorAll('.reply-cancel').forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.dataset.commentId;
+            document.getElementById('reply-form-' + commentId).style.display = 'none';
+        });
+    });
+</script>
 {% endblock %}

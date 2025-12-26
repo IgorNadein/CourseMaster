@@ -10,9 +10,10 @@ from django.http import JsonResponse, HttpResponse
 from django.template.loader import render_to_string
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission,
-                     Certificate)
+                     Certificate, LessonComment)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
-                    QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm)
+                    QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm,
+                    LessonCommentForm)
 
 
 class CourseListView(ListView):
@@ -291,6 +292,19 @@ class LessonView(LoginRequiredMixin, DetailView):
             )
             context['lesson_progress'] = lesson_progress
             context['is_completed'] = lesson_progress.completed
+        
+        # Комментарии к уроку
+        context['comments'] = lesson.comments.filter(
+            is_approved=True,
+            reply_to__isnull=True  # Только родительские комментарии
+        ).select_related('author').prefetch_related('replies__author')
+        context['comments_count'] = lesson.comments.filter(is_approved=True).count()
+        context['comment_form'] = LessonCommentForm()
+        
+        # Проверка: можно ли оставлять комментарии
+        is_enrolled = Enrollment.objects.filter(student=self.request.user, course=course).exists()
+        is_instructor = course.instructor == self.request.user
+        context['can_comment'] = is_enrolled or is_instructor
         
         return context
 
@@ -1415,3 +1429,118 @@ class CertificatePrintView(LoginRequiredMixin, View):
         return render(request, 'courses/certificate_print.html', {
             'certificate': certificate
         })
+
+
+# ============================================================
+# LESSON COMMENT VIEWS (Обсуждения и комментарии)
+# ============================================================
+
+class LessonCommentCreateView(LoginRequiredMixin, CreateView):
+    """
+    Создание комментария к уроку
+    """
+    model = LessonComment
+    form_class = LessonCommentForm
+    
+    def form_valid(self, form):
+        lesson_id = self.kwargs.get('lesson_id')
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        course = lesson.section.course
+        
+        # Проверка: записан ли студент на курс или преподаватель
+        is_enrolled = Enrollment.objects.filter(student=self.request.user, course=course).exists()
+        is_instructor = course.instructor == self.request.user
+        
+        if not (is_enrolled or is_instructor):
+            messages.error(self.request, 'Вы должны быть записаны на курс, чтобы оставлять комментарии.')
+            return redirect('lesson_view', lesson_id=lesson_id)
+        
+        form.instance.lesson = lesson
+        form.instance.author = self.request.user
+        
+        # Проверить ответ на комментарий
+        reply_to_id = self.request.POST.get('reply_to')
+        if reply_to_id:
+            form.instance.reply_to = get_object_or_404(LessonComment, id=reply_to_id)
+        
+        messages.success(self.request, 'Комментарий добавлен!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        lesson_id = self.kwargs.get('lesson_id')
+        return reverse('lesson_view', kwargs={'lesson_id': lesson_id}) + '#comments'
+
+
+class LessonCommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    """
+    Редактирование комментария
+    """
+    model = LessonComment
+    form_class = LessonCommentForm
+    template_name = 'courses/comment_form.html'
+    pk_url_kwarg = 'comment_id'
+    
+    def test_func(self):
+        comment = self.get_object()
+        return comment.author == self.request.user
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Комментарий обновлен!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('lesson_view', kwargs={'lesson_id': self.object.lesson.id}) + '#comments'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['lesson'] = self.object.lesson
+        context['course'] = self.object.lesson.section.course
+        return context
+
+
+class LessonCommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    """
+    Удаление комментария
+    """
+    model = LessonComment
+    template_name = 'courses/comment_confirm_delete.html'
+    pk_url_kwarg = 'comment_id'
+    
+    def test_func(self):
+        comment = self.get_object()
+        # Автор или преподаватель курса может удалить
+        is_author = comment.author == self.request.user
+        is_instructor = comment.lesson.section.course.instructor == self.request.user
+        return is_author or is_instructor
+    
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'Комментарий удален.')
+        return super().delete(request, *args, **kwargs)
+    
+    def get_success_url(self):
+        return reverse('lesson_view', kwargs={'lesson_id': self.object.lesson.id}) + '#comments'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['lesson'] = self.object.lesson
+        context['course'] = self.object.lesson.section.course
+        return context
+
+
+class InstructorCommentPinView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """
+    Закрепить/открепить комментарий (только преподаватель)
+    """
+    def test_func(self):
+        comment_id = self.kwargs.get('comment_id')
+        comment = get_object_or_404(LessonComment, id=comment_id)
+        return comment.lesson.section.course.instructor == self.request.user
+    
+    def post(self, request, comment_id):
+        comment = get_object_or_404(LessonComment, id=comment_id)
+        comment.is_pinned = not comment.is_pinned
+        comment.save()
+        
+        action = 'закреплен' if comment.is_pinned else 'откреплен'
+        messages.success(request, f'Комментарий {action}.')
+        return redirect('lesson_view', lesson_id=comment.lesson.id)

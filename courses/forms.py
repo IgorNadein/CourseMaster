@@ -1,5 +1,5 @@
 from django import forms
-from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, AssignmentSubmission, Review
+from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, AssignmentSubmission, Review, LessonComment
 
 
 class CourseForm(forms.ModelForm):
@@ -345,4 +345,22 @@ class ReviewForm(forms.ModelForm):
             'rating': 'Оценка',
             'title': 'Заголовок',
             'comment': 'Отзыв',
+        }
+
+
+class LessonCommentForm(forms.ModelForm):
+    """Форма комментария к уроку"""
+    
+    class Meta:
+        model = LessonComment
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Напишите ваш вопрос или комментарий...'
+            }),
+        }
+        labels = {
+            'content': 'Комментарий',
         }

@@ -413,3 +413,34 @@ class Certificate(models.Model):
             self.instructor_name = instructor.get_full_name() or instructor.username
         super().save(*args, **kwargs)
 
+
+class LessonComment(models.Model):
+    """
+    Комментарий к уроку (обсуждение)
+    Поддерживает вложенные ответы (reply_to)
+    """
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='lesson_comments')
+    content = models.TextField(help_text="Текст комментария")
+    reply_to = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='replies'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_pinned = models.BooleanField(default=False, help_text="Закрепить комментарий")
+    is_approved = models.BooleanField(default=True, help_text="Одобрен модератором")
+    
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']
+    
+    def __str__(self):
+        return f"{self.author.username}: {self.content[:50]}..."
+    
+    @property
+    def is_edited(self):
+        """Проверить, был ли комментарий отредактирован"""
+        return self.updated_at > self.created_at
