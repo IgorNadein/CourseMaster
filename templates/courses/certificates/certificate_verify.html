@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Проверка сертификата - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>
+                        Проверка подлинности сертификата
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Форма поиска -->
+                    <form method="post" action="{% url 'certificate_verify' %}" class="mb-4">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" name="certificate_number" class="form-control form-control-lg" 
+                                   placeholder="Введите номер сертификата (например: CM-A1B2C3D4)"
+                                   value="{{ certificate_number|default:'' }}" required>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if searched %}
+                        {% if certificate %}
+                            <!-- Сертификат найден -->
+                            <div class="alert alert-success">
+                                <h5 class="alert-heading">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    Сертификат подтвержден!
+                                </h5>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-sm-4"><strong>Номер:</strong></div>
+                                    <div class="col-sm-8">{{ certificate.certificate_number }}</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Студент:</strong></div>
+                                    <div class="col-sm-8">{{ certificate.student_name }}</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Курс:</strong></div>
+                                    <div class="col-sm-8">{{ certificate.course_title }}</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Преподаватель:</strong></div>
+                                    <div class="col-sm-8">{{ certificate.instructor_name }}</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Дата выдачи:</strong></div>
+                                    <div class="col-sm-8">{{ certificate.issued_at|date:"d.m.Y" }}</div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Сертификат не найден -->
+                            <div class="alert alert-danger">
+                                <h5 class="alert-heading">
+                                    <i class="bi bi-x-circle-fill me-2"></i>
+                                    Сертификат не найден
+                                </h5>
+                                <p class="mb-0">
+                                    Сертификат с номером <strong>{{ certificate_number }}</strong> не найден в базе данных.
+                                    Пожалуйста, проверьте правильность ввода номера.
+                                </p>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-info-circle display-4"></i>
+                            <p class="mt-3">Введите номер сертификата для проверки его подлинности</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

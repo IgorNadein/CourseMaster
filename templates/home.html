@@ -5,10 +5,21 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}">
-<link rel="stylesheet" href="{% static 'css/courses.css' %}">
 {% endblock %}
 
-{% block content %}
+{% block body_content %}
+{% if messages %}
+<div class="container">
+    <ul class="messages">
+        {% for message in messages %}
+        <li class="message {{ message.tags }}">
+            {{ message }}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <div class="home-page">
     <!-- Hero Section -->
     <section class="hero">
@@ -17,7 +28,9 @@
             <p>Получайте новые навыки от лучших преподавателей мира</p>
             <div class="hero-buttons">
                 <a href="{% url 'course_list' %}" class="btn btn-primary">Начать обучение</a>
+                {% if not user.is_authenticated %}
                 <a href="{% url 'login' %}" class="btn btn-secondary">Войти</a>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -52,19 +65,19 @@
             <h2>Почему выбирают CourseMaster?</h2>
             <div class="features-grid">
                 <div class="feature-item">
-                    <div class="feature-icon">���</div>
+                    <div class="feature-icon">&#128187;</div>
                     <h3>Практический подход</h3>
-                    <p>Обучение на реальных проектах</p>
+                    <p>Обучение на реальных проектах с наставниками</p>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">���</div>
+                    <div class="feature-icon">&#127891;</div>
                     <h3>Качественный контент</h3>
-                    <p>Созданы опытными профессионалами</p>
+                    <p>Курсы созданы опытными профессионалами</p>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">��</div>
+                    <div class="feature-icon">&#128196;</div>
                     <h3>Сертификаты</h3>
-                    <p>Признанные сертификаты об окончании</p>
+                    <p>Признанные сертификаты об окончании курса</p>
                 </div>
             </div>
         </div>
@@ -74,13 +87,17 @@
     <section class="cta-section">
         <div class="container">
             <h2>Начните свой путь обучения прямо сейчас!</h2>
-            <p>Присоединитесь к тысячам студентов</p>
-            <a href="{% url 'register' %}" class="btn btn-primary">Создать аккаунт</a>
+            <p>Присоединитесь к тысячам студентов по всему миру</p>
+            {% if user.is_authenticated %}
+            <a href="{% url 'course_list' %}" class="btn btn-primary btn-large">Смотреть курсы</a>
+            {% else %}
+            <a href="{% url 'register' %}" class="btn btn-primary btn-large">Создать аккаунт бесплатно</a>
+            {% endif %}
         </div>
     </section>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/courses.js' %}"></script>
+<script src="{% static 'js/main.js' %}"></script>
 {% endblock %}

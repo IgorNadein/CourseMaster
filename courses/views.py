@@ -28,7 +28,7 @@ class CourseListView(ListView):
     paginate_by = 12
     
     def get_queryset(self):
-        queryset = Course.objects.filter(status='published').select_related(
+        queryset = Course.objects.filter(status='published').exclude(slug='').select_related(
             'instructor', 'category'
         ).annotate(
             enrollments_count=Count('enrollments')

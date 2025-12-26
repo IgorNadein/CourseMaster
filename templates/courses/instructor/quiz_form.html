@@ -1,0 +1,193 @@
+{% extends "profiles/base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Редактировать тест{% else %}Создать тест{% endif %} - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <!-- Навигация -->
+            <div class="mb-4">
+                <p class="text-muted">
+                    <a href="{% url 'instructor_course_detail' course.slug %}">{{ course.title }}</a> / 
+                    <a href="{% url 'lesson_update' lesson.id %}">{{ lesson.title }}</a>
+                </p>
+            </div>
+
+            <!-- Заголовок -->
+            <h2 class="mb-4">
+                {% if form.instance.pk %}
+                    Редактировать тест
+                {% else %}
+                    Создать новый тест
+                {% endif %}
+            </h2>
+
+            <!-- Форма -->
+            <form method="post" novalidate class="needs-validation">
+                {% csrf_token %}
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <!-- Основная информация -->
+                        <h5 class="mb-3">Основная информация</h5>
+
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">
+                                <strong>Название теста</strong>
+                            </label>
+                            {% if form.title.errors %}
+                                {{ form.title }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.title.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.title }}
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                Описание теста
+                            </label>
+                            {% if form.description.errors %}
+                                {{ form.description }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.description.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.description }}
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Объясните студентам, что их ждет в этом тесте.
+                            </small>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Параметры теста -->
+                        <h5 class="mb-3">Параметры теста</h5>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.pass_percentage.id_for_label }}" class="form-label">
+                                    <strong>Проходной балл (%)</strong>
+                                </label>
+                                {% if form.pass_percentage.errors %}
+                                    {{ form.pass_percentage }}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.pass_percentage.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.pass_percentage }}
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.attempts_limit.id_for_label }}" class="form-label">
+                                    <strong>Максимум попыток</strong>
+                                </label>
+                                {% if form.attempts_limit.errors %}
+                                    {{ form.attempts_limit }}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.attempts_limit.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.attempts_limit }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.time_limit_minutes.id_for_label }}" class="form-label">
+                                Ограничение времени (минут)
+                            </label>
+                            {% if form.time_limit_minutes.errors %}
+                                {{ form.time_limit_minutes }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.time_limit_minutes.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.time_limit_minutes }}
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Оставьте пусто, если ограничение времени не требуется.
+                            </small>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Дополнительные параметры -->
+                        <h5 class="mb-3">Дополнительные параметры</h5>
+
+                        <div class="form-check mb-3">
+                            {% if form.shuffle_questions.errors %}
+                                {{ form.shuffle_questions }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.shuffle_questions.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.shuffle_questions }}
+                            {% endif %}
+                            <label class="form-check-label" for="{{ form.shuffle_questions.id_for_label }}">
+                                Перемешивать вопросы
+                            </label>
+                            <small class="form-text text-muted d-block mt-1">
+                                Вопросы будут отображаться в случайном порядке при каждой попытке.
+                            </small>
+                        </div>
+
+                        <div class="form-check">
+                            {% if form.show_answers.errors %}
+                                {{ form.show_answers }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.show_answers.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.show_answers }}
+                            {% endif %}
+                            <label class="form-check-label" for="{{ form.show_answers.id_for_label }}">
+                                Показывать правильные ответы
+                            </label>
+                            <small class="form-text text-muted d-block mt-1">
+                                Студенты смогут увидеть правильные ответы и объяснения после завершения теста.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{% url 'instructor_course_detail' course.slug %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i>
+                        {% if form.instance.pk %}Сохранить изменения{% else %}Создать тест{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Валидация формы
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.querySelectorAll('.needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+{% endblock %}

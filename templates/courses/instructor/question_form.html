@@ -1,0 +1,174 @@
+{% extends "profiles/base.html" %}
+{% load static %}
+
+{% block title %}Добавить вопрос в тест - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <!-- Навигация -->
+            <div class="mb-4">
+                <p class="text-muted">
+                    <a href="{% url 'instructor_course_detail' course.slug %}">{{ course.title }}</a> / 
+                    <a href="{% url 'lesson_update' lesson.id %}">{{ lesson.title }}</a> / 
+                    <a href="{% url 'instructor_quiz_detail' quiz.id %}">{{ quiz.title }}</a>
+                </p>
+            </div>
+
+            <!-- Заголовок -->
+            <h2 class="mb-4">Добавить вопрос в тест</h2>
+
+            <!-- Форма -->
+            <form method="post" novalidate class="needs-validation">
+                {% csrf_token %}
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <!-- Тип вопроса -->
+                        <div class="mb-4">
+                            <label for="{{ form.type.id_for_label }}" class="form-label">
+                                <strong>Тип вопроса</strong>
+                            </label>
+                            {% if form.type.errors %}
+                                {{ form.type }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.type.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.type }}
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-2">
+                                <strong>Доступные типы:</strong>
+                                <ul class="mb-0">
+                                    <li><strong>Одиночный выбор:</strong> Студент выбирает один правильный ответ</li>
+                                    <li><strong>Множественный выбор:</strong> Может быть несколько правильных ответов</li>
+                                    <li><strong>Верно/Неверно:</strong> Два варианта ответа</li>
+                                    <li><strong>Короткий ответ:</strong> Студент вводит текст (проверяется преподавателем)</li>
+                                </ul>
+                            </small>
+                        </div>
+
+                        <hr>
+
+                        <!-- Текст вопроса -->
+                        <div class="mb-4">
+                            <label for="{{ form.text.id_for_label }}" class="form-label">
+                                <strong>Текст вопроса</strong>
+                            </label>
+                            {% if form.text.errors %}
+                                {{ form.text }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.text.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.text }}
+                            {% endif %}
+                        </div>
+
+                        <!-- Баллы -->
+                        <div class="mb-4">
+                            <label for="{{ form.points.id_for_label }}" class="form-label">
+                                <strong>Баллы за правильный ответ</strong>
+                            </label>
+                            {% if form.points.errors %}
+                                {{ form.points }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.points.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.points }}
+                            {% endif %}
+                        </div>
+
+                        <!-- Объяснение -->
+                        <div class="mb-4">
+                            <label for="{{ form.explanation.id_for_label }}" class="form-label">
+                                Объяснение
+                            </label>
+                            {% if form.explanation.errors %}
+                                {{ form.explanation }}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.explanation.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.explanation }}
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-1">
+                                Это объяснение будет показано студентам после завершения теста.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Предпросмотр вопроса -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Предпросмотр вопроса</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text"><strong id="preview-text">Текст вопроса...</strong></p>
+                        <p class="text-muted mb-0">
+                            <span id="preview-points">1</span> баллов
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{% url 'instructor_quiz_detail' quiz.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Добавить вопрос
+                    </button>
+                </div>
+            </form>
+
+            <!-- Информация о тесте -->
+            <div class="alert alert-info mt-4">
+                <strong>Тест:</strong> {{ quiz.title }}<br>
+                <strong>Урок:</strong> {{ lesson.title }}<br>
+                <strong>Всего вопросов:</strong> {{ quiz.questions.count }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Обновление предпросмотра
+    document.addEventListener('DOMContentLoaded', function() {
+        const textField = document.querySelector('[name="text"]');
+        const pointsField = document.querySelector('[name="points"]');
+        
+        if (textField) {
+            textField.addEventListener('input', function() {
+                document.getElementById('preview-text').textContent = this.value || 'Текст вопроса...';
+            });
+        }
+        
+        if (pointsField) {
+            pointsField.addEventListener('input', function() {
+                document.getElementById('preview-points').textContent = this.value || '1';
+            });
+        }
+    });
+
+    // Валидация формы
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.querySelectorAll('.needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+{% endblock %}
