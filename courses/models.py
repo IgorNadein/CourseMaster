@@ -444,3 +444,224 @@ class LessonComment(models.Model):
     def is_edited(self):
         """Проверить, был ли комментарий отредактирован"""
         return self.updated_at > self.created_at
+
+# ============================================================
+# PAYMENT MODELS (Система платежей)
+# ============================================================
+
+class PaymentMethod(models.Model):
+    """
+    Способ оплаты
+    """
+    PAYMENT_TYPE_CHOICES = [
+        ('stripe', 'Stripe Card'),
+        ('paypal', 'PayPal'),
+        ('yookassa', 'Yookassa (ЮKassa)'),
+        ('bank_transfer', 'Bank Transfer'),
+    ]
+    
+    name = models.CharField(max_length=50, unique=True)
+    type = models.CharField(max_length=50, choices=PAYMENT_TYPE_CHOICES)
+    description = models.CharField(max_length=200)
+    is_active = models.BooleanField(default=True)
+    logo_url = models.URLField(blank=True)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class Purchase(models.Model):
+    """
+    Покупка курса студентом
+    Связь между Student, Course и Payment
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Ожидание платежа'),
+        ('completed', 'Оплачено'),
+        ('failed', 'Ошибка платежа'),
+        ('refunded', 'Возврат'),
+        ('cancelled', 'Отменено'),
+    ]
+    
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='purchases')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Цена
+    price = models.DecimalField(max_digits=8, decimal_places=2)
+    discount_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    
+    # Промокод
+    promo_code = models.CharField(max_length=50, blank=True)
+    
+    # Платеж
+    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.SET_NULL, null=True, blank=True)
+    transaction_id = models.CharField(max_length=100, blank=True, unique=True)
+    
+    # Временные метки
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Возврат
+    refund_reason = models.TextField(blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    refund_amount = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['student', 'course']
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.student.username} - {self.course.title} ({self.status})"
+    
+    @property
+    def is_completed(self):
+        """Проверить, завершен ли платеж"""
+        return self.status == 'completed'
+    
+    @property
+    def discount_percentage(self):
+        """Процент скидки от оригинальной цены"""
+        if self.price == 0:
+            return 0
+        return round((self.discount_amount / self.price) * 100, 2)
+
+
+class Payment(models.Model):
+    """
+    Запись о платеже в Stripe/PayPal/Yookassa
+    """
+    STATUS_CHOICES = [
+        ('pending', 'В ожидании'),
+        ('succeeded', 'Успешно'),
+        ('failed', 'Ошибка'),
+        ('canceled', 'Отменено'),
+    ]
+    
+    purchase = models.OneToOneField(Purchase, on_delete=models.CASCADE, related_name='payment')
+    
+    # Данные платежа
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    currency = models.CharField(max_length=3, default='RUB')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Stripe данные
+    stripe_payment_intent_id = models.CharField(max_length=100, blank=True)
+    stripe_client_secret = models.CharField(max_length=200, blank=True)
+    
+    # PayPal данные
+    paypal_order_id = models.CharField(max_length=100, blank=True)
+    
+    # Yookassa данные
+    yookassa_payment_id = models.CharField(max_length=100, blank=True)
+    
+    # Метаданные
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Обработка ошибок
+    error_message = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Payment #{self.id} - {self.purchase.student.username} ({self.status})"
+
+
+class PromoCode(models.Model):
+    """
+    Промокод для скидки
+    """
+    code = models.CharField(max_length=50, unique=True)
+    description = models.CharField(max_length=200, blank=True)
+    
+    # Скидка
+    discount_type = models.CharField(
+        max_length=10,
+        choices=[('fixed', 'Fixed amount'), ('percent', 'Percentage')],
+        default='percent'
+    )
+    discount_value = models.DecimalField(max_digits=8, decimal_places=2)
+    
+    # Ограничения
+    max_uses = models.IntegerField(null=True, blank=True, help_text="Максимум использований (пусто = неограниченно)")
+    current_uses = models.IntegerField(default=0)
+    
+    # Действие
+    is_active = models.BooleanField(default=True)
+    valid_from = models.DateTimeField()
+    valid_until = models.DateTimeField()
+    
+    # Применимо к
+    applicable_courses = models.ManyToManyField(Course, blank=True, related_name='promo_codes', help_text="Пусто = для всех курсов")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"PromoCode: {self.code} (-{self.discount_value}{('%' if self.discount_type == 'percent' else 'RUB')})"
+    
+    def is_valid(self):
+        """Проверить, действителен ли промокод"""
+        from django.utils import timezone
+        now = timezone.now()
+        
+        if not self.is_active:
+            return False
+        
+        if now < self.valid_from or now > self.valid_until:
+            return False
+        
+        if self.max_uses and self.current_uses >= self.max_uses:
+            return False
+        
+        return True
+    
+    def apply_discount(self, original_price):
+        """Применить скидку к цене"""
+        if self.discount_type == 'fixed':
+            return max(0, original_price - self.discount_value)
+        else:  # percent
+            discount_amount = (original_price * self.discount_value) / 100
+            return max(0, original_price - discount_amount)
+
+
+class Refund(models.Model):
+    """
+    Возврат денежных средств
+    """
+    STATUS_CHOICES = [
+        ('pending', 'В ожидании'),
+        ('approved', 'Одобрено'),
+        ('rejected', 'Отклонено'),
+        ('completed', 'Завершено'),
+    ]
+    
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='refunds')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='refunds')
+    
+    reason = models.TextField(help_text="Причина возврата")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    refund_amount = models.DecimalField(max_digits=8, decimal_places=2)
+    
+    # Сроки
+    requested_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Отказ
+    rejection_reason = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-requested_at']
+    
+    def __str__(self):
+        return f"Refund: {self.purchase.student.username} - {self.refund_amount} RUB ({self.status})"

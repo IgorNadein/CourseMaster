@@ -1,5 +1,6 @@
 from django import forms
-from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, AssignmentSubmission, Review, LessonComment
+from .models import (Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, 
+                     AssignmentSubmission, Review, LessonComment, Purchase, Payment, PromoCode)
 
 
 class CourseForm(forms.ModelForm):
@@ -364,3 +365,107 @@ class LessonCommentForm(forms.ModelForm):
         labels = {
             'content': 'Комментарий',
         }
+
+# ============================================================
+# PAYMENT FORMS (Формы для платежей)
+# ============================================================
+
+class CheckoutForm(forms.Form):
+    """Форма оформления покупки курса"""
+    
+    PAYMENT_METHOD_CHOICES = [
+        ('stripe', 'Stripe Card'),
+        ('paypal', 'PayPal'),
+        ('yookassa', 'Yookassa (Яндекс.Касса)'),
+    ]
+    
+    payment_method = forms.ChoiceField(
+        choices=PAYMENT_METHOD_CHOICES,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Способ оплаты'
+    )
+    
+    promo_code = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Введите промокод (опционально)',
+            'maxlength': '50'
+        }),
+        label='Промокод'
+    )
+    
+    agree_terms = forms.BooleanField(
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Я согласен с условиями использования',
+        required=True
+    )
+
+
+class StripePaymentForm(forms.Form):
+    """Форма для Stripe платежа"""
+    
+    cardholder_name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Имя владельца карты'
+        }),
+        label='Имя'
+    )
+    
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'your@email.com'
+        }),
+        label='Email'
+    )
+    
+    # stripe_token будет добавлена через JavaScript
+
+
+class PayPalReturnForm(forms.Form):
+    """Форма для обработки возврата из PayPal"""
+    pass
+
+
+class RefundRequestForm(forms.Form):
+    """Форма запроса возврата денежных средств"""
+    
+    REFUND_REASONS = [
+        ('not_satisfied', 'Не удовлетворен качеством'),
+        ('changed_mind', 'Передумал изучать курс'),
+        ('technical_issues', 'Технические проблемы'),
+        ('duplicate_purchase', 'Случайная двойная покупка'),
+        ('other', 'Другая причина'),
+    ]
+    
+    reason = forms.ChoiceField(
+        choices=REFUND_REASONS,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Причина возврата'
+    )
+    
+    details = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Дополнительные подробности (опционально)'
+        }),
+        label='Дополнительная информация'
+    )
+
+
+class PromoCodeForm(forms.Form):
+    """Форма проверки промокода"""
+    
+    code = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Введите промокод'
+        }),
+        label='Промокод'
+    )

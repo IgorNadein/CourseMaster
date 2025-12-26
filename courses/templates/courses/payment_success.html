@@ -1,0 +1,65 @@
+{% extends 'profiles/base.html' %}
+
+{% block title %}Платеж успешен - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-success">
+                <div class="card-body p-5 text-center">
+                    <div style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    
+                    <h2 class="card-title mb-2">Платеж успешно обработан!</h2>
+                    <p class="text-muted mb-4">
+                        Спасибо за покупку
+                    </p>
+
+                    <!-- Информация о платеже -->
+                    <div class="alert alert-info mb-4">
+                        <strong>Курс:</strong> {{ course.title }}<br>
+                        <strong>Сумма платежа:</strong> {{ purchase.total_amount }} ₽<br>
+                        <strong>Статус:</strong> <span class="badge bg-success">Оплачено</span><br>
+                        <strong>Дата:</strong> {{ purchase.completed_at|date:"d.m.Y H:i" }}<br>
+                        <strong>ID покупки:</strong> #{{ purchase.id }}
+                    </div>
+
+                    <!-- Что дальше -->
+                    <h5 class="mb-3">Что дальше?</h5>
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-2">✓ Вы записаны на курс</li>
+                        <li class="mb-2">✓ Доступны все материалы и уроки</li>
+                        <li class="mb-2">✓ Можно начинать обучение</li>
+                        <li class="mb-2">✓ Получите сертификат при завершении</li>
+                    </ul>
+
+                    <!-- Кнопки действий -->
+                    <a href="{% url 'course_detail' course.slug %}" class="btn btn-primary btn-lg mb-2 w-100">
+                        <i class="bi bi-book"></i> Открыть курс
+                    </a>
+                    
+                    <a href="{% url 'my_courses' %}" class="btn btn-outline-secondary btn-lg w-100">
+                        <i class="bi bi-list"></i> Мои курсы
+                    </a>
+                </div>
+            </div>
+
+            <!-- Информация поддержки -->
+            <div class="alert alert-info mt-4">
+                <strong>Нужна помощь?</strong> 
+                Если у вас есть вопросы, свяжитесь с нашей <a href="#" class="alert-link">командой поддержки</a>
+            </div>
+
+            <!-- Получить квитанцию -->
+            <p class="text-center">
+                Квитанция об оплате отправлена на ваш email<br>
+                <small class="text-muted">
+                    Проверьте папку "Спам", если не видите письма
+                </small>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

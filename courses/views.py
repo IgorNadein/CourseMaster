@@ -8,12 +8,14 @@ from django.utils import timezone
 from django.urls import reverse_lazy, reverse
 from django.http import JsonResponse, HttpResponse
 from django.template.loader import render_to_string
+from django.conf import settings
+from decimal import Decimal
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission,
-                     Certificate, LessonComment)
+                     Certificate, LessonComment, Payment, Purchase, PromoCode, Refund, PaymentMethod)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
                     QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm,
-                    LessonCommentForm)
+                    LessonCommentForm, CheckoutForm, StripePaymentForm, RefundRequestForm, PromoCodeForm)
 
 
 class CourseListView(ListView):
@@ -1544,3 +1546,314 @@ class InstructorCommentPinView(LoginRequiredMixin, UserPassesTestMixin, View):
         action = 'закреплен' if comment.is_pinned else 'откреплен'
         messages.success(request, f'Комментарий {action}.')
         return redirect('lesson_view', lesson_id=comment.lesson.id)
+
+# ============================================================
+# PAYMENT VIEWS (Система платежей)
+# ============================================================
+
+class CourseCheckoutView(LoginRequiredMixin, View):
+    """
+    Страница оформления покупки курса
+    """
+    template_name = 'courses/checkout.html'
+    
+    def get(self, request, slug):
+        course = get_object_or_404(Course, slug=slug, status='published')
+        
+        # Проверка - уже ли записан на курс
+        if Enrollment.objects.filter(student=request.user, course=course).exists():
+            messages.info(request, f'Вы уже записаны на курс "{course.title}".')
+            return redirect('course_detail', slug=course.slug)
+        
+        # Проверка - уже ли есть активная покупка
+        purchase = Purchase.objects.filter(
+            student=request.user,
+            course=course,
+            status__in=['pending', 'completed']
+        ).first()
+        
+        if purchase and purchase.status == 'completed':
+            # Если уже оплачено, создать запись
+            Enrollment.objects.get_or_create(student=request.user, course=course)
+            messages.info(request, f'Вы уже оплатили этот курс.')
+            return redirect('course_detail', slug=course.slug)
+        
+        # Подготовить контекст
+        price = course.current_price
+        discount_amount = Decimal('0')
+        
+        form = CheckoutForm()
+        
+        context = {
+            'course': course,
+            'price': price,
+            'discount_amount': discount_amount,
+            'total_amount': price - discount_amount,
+            'form': form,
+            'stripe_public_key': settings.STRIPE_PUBLIC_KEY if hasattr(settings, 'STRIPE_PUBLIC_KEY') else '',
+            'purchase': purchase,
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def post(self, request, slug):
+        course = get_object_or_404(Course, slug=slug, status='published')
+        form = CheckoutForm(request.POST)
+        
+        # Проверка - уже ли записан на курс
+        if Enrollment.objects.filter(student=request.user, course=course).exists():
+            messages.error(request, 'Вы уже записаны на этот курс.')
+            return redirect('course_detail', slug=course.slug)
+        
+        if form.is_valid():
+            payment_method_type = form.cleaned_data['payment_method']
+            promo_code_input = form.cleaned_data.get('promo_code', '').strip()
+            
+            # Применить промокод если есть
+            discount_amount = Decimal('0')
+            promo_code = None
+            
+            if promo_code_input:
+                try:
+                    promo_code = PromoCode.objects.get(code=promo_code_input.upper())
+                    if promo_code.is_valid():
+                        # Проверить применимость к курсу
+                        if promo_code.applicable_courses.exists() and course not in promo_code.applicable_courses.all():
+                            messages.error(request, 'Этот промокод не применим к данному курсу.')
+                            promo_code = None
+                        else:
+                            final_price = promo_code.apply_discount(course.current_price)
+                            discount_amount = course.current_price - final_price
+                            promo_code.current_uses += 1
+                            promo_code.save()
+                    else:
+                        messages.error(request, 'Промокод неактивен или истек.')
+                        promo_code = None
+                except PromoCode.DoesNotExist:
+                    messages.error(request, 'Промокод не найден.')
+            
+            price = course.current_price
+            total_amount = price - discount_amount
+            
+            # Создать запись о покупке
+            purchase, created = Purchase.objects.get_or_create(
+                student=request.user,
+                course=course,
+                defaults={
+                    'status': 'pending',
+                    'price': price,
+                    'discount_amount': discount_amount,
+                    'total_amount': total_amount,
+                    'promo_code': promo_code_input.upper() if promo_code else '',
+                }
+            )
+            
+            if not created and purchase.status != 'pending':
+                messages.error(request, 'Ошибка при создании покупки.')
+                return redirect('course_detail', slug=course.slug)
+            
+            # Перенаправить на нужную платежную систему
+            if payment_method_type == 'stripe':
+                return redirect('stripe_payment', purchase_id=purchase.id)
+            elif payment_method_type == 'paypal':
+                return redirect('paypal_payment', purchase_id=purchase.id)
+            elif payment_method_type == 'yookassa':
+                return redirect('yookassa_payment', purchase_id=purchase.id)
+        
+        # Если форма невалидна, показать ошибку
+        messages.error(request, 'Пожалуйста, корректно заполните все поля.')
+        return redirect('course_checkout', slug=slug)
+
+
+class StripePaymentView(LoginRequiredMixin, View):
+    """
+    Обработка платежа через Stripe
+    """
+    template_name = 'courses/stripe_payment.html'
+    
+    def get(self, request, purchase_id):
+        purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
+        
+        context = {
+            'purchase': purchase,
+            'course': purchase.course,
+            'amount': int(purchase.total_amount * 100),  # Stripe требует сумму в центах
+            'stripe_public_key': settings.STRIPE_PUBLIC_KEY if hasattr(settings, 'STRIPE_PUBLIC_KEY') else '',
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def post(self, request, purchase_id):
+        """
+        Обработка платежа (webhook от Stripe приходит сюда)
+        """
+        purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
+        
+        try:
+            import stripe
+            stripe.api_key = settings.STRIPE_SECRET_KEY if hasattr(settings, 'STRIPE_SECRET_KEY') else ''
+            
+            # В реальном приложении здесь будет обработка платежа
+            # Для MVP используем простую схему
+            
+            payment, created = Payment.objects.get_or_create(
+                purchase=purchase,
+                defaults={
+                    'amount': purchase.total_amount,
+                    'currency': 'RUB',
+                    'status': 'pending',
+                    'stripe_payment_intent_id': request.POST.get('stripe_payment_intent_id', ''),
+                }
+            )
+            
+            # Отметить как успешно
+            purchase.status = 'completed'
+            purchase.completed_at = timezone.now()
+            purchase.save()
+            
+            payment.status = 'succeeded'
+            payment.completed_at = timezone.now()
+            payment.save()
+            
+            # Создать запись на курс
+            Enrollment.objects.get_or_create(
+                student=request.user,
+                course=purchase.course
+            )
+            
+            messages.success(request, f'✓ Платеж успешно обработан! Вы записаны на курс "{purchase.course.title}".')
+            return redirect('course_detail', slug=purchase.course.slug)
+        
+        except Exception as e:
+            purchase.status = 'failed'
+            purchase.save()
+            
+            messages.error(request, f'Ошибка при обработке платежа: {str(e)}')
+            return redirect('course_checkout', slug=purchase.course.slug)
+
+
+class PayPalPaymentView(LoginRequiredMixin, View):
+    """
+    Обработка платежа через PayPal
+    """
+    template_name = 'courses/paypal_payment.html'
+    
+    def get(self, request, purchase_id):
+        purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
+        
+        context = {
+            'purchase': purchase,
+            'course': purchase.course,
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class YookassaPaymentView(LoginRequiredMixin, View):
+    """
+    Обработка платежа через Yookassa (Яндекс.Касса)
+    """
+    template_name = 'courses/yookassa_payment.html'
+    
+    def get(self, request, purchase_id):
+        purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
+        
+        context = {
+            'purchase': purchase,
+            'course': purchase.course,
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class PaymentSuccessView(LoginRequiredMixin, View):
+    """
+    Страница успешной оплаты
+    """
+    template_name = 'courses/payment_success.html'
+    
+    def get(self, request, purchase_id):
+        purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='completed')
+        
+        context = {
+            'purchase': purchase,
+            'course': purchase.course,
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class PaymentFailedView(LoginRequiredMixin, View):
+    """
+    Страница ошибки платежа
+    """
+    template_name = 'courses/payment_failed.html'
+    
+    def get(self, request, purchase_id):
+        purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='failed')
+        
+        context = {
+            'purchase': purchase,
+            'course': purchase.course,
+        }
+        
+        return render(request, self.template_name, context)
+
+
+class PurchaseHistoryView(LoginRequiredMixin, ListView):
+    """
+    История покупок студента
+    """
+    model = Purchase
+    template_name = 'courses/purchase_history.html'
+    context_object_name = 'purchases'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        return Purchase.objects.filter(
+            student=self.request.user
+        ).select_related('course').order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['total_spent'] = sum(p.total_amount for p in self.get_queryset() if p.status == 'completed')
+        context['completed_purchases'] = self.get_queryset().filter(status='completed').count()
+        return context
+
+
+class RefundRequestView(LoginRequiredMixin, CreateView):
+    """
+    Запрос на возврат денежных средств
+    """
+    model = Refund
+    form_class = RefundRequestForm
+    template_name = 'courses/refund_request.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.purchase = get_object_or_404(Purchase, id=kwargs.get('purchase_id'), student=request.user, status='completed')
+        
+        # Проверка - уже ли есть запрос на возврат
+        if Refund.objects.filter(purchase=self.purchase, status__in=['pending', 'approved']).exists():
+            messages.error(request, 'Вы уже отправили запрос на возврат для этой покупки.')
+            return redirect('purchase_history')
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def form_valid(self, form):
+        refund = form.save(commit=False)
+        refund.purchase = self.purchase
+        refund.student = self.request.user
+        refund.refund_amount = self.purchase.total_amount
+        refund.save()
+        
+        messages.success(request, 'Ваш запрос на возврат отправлен. Мы свяжемся с вами в течение 3-5 дней.')
+        return redirect('purchase_history')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['purchase'] = self.purchase
+        context['course'] = self.purchase.course
+        return context
+    
+    def get_success_url(self):
+        return reverse_lazy('purchase_history')

@@ -21,28 +21,15 @@ urlpatterns = [
     path('verify/', views.CertificateVerifyView.as_view(), name='certificate_verify'),
     path('verify/<str:certificate_number>/', views.CertificateVerifyView.as_view(), name='certificate_verify_number'),
     
-    # Преподавательские URLs
-    path('instructor/', views.InstructorCoursesView.as_view(), name='instructor_courses'),
-    path('instructor/create/', views.CourseCreateView.as_view(), name='course_create'),
-    path('instructor/<slug:slug>/', views.InstructorCourseDetailView.as_view(), name='instructor_course_detail'),
-    path('instructor/<slug:slug>/edit/', views.CourseUpdateView.as_view(), name='course_update'),
-    path('instructor/<slug:slug>/delete/', views.CourseDeleteView.as_view(), name='course_delete'),
-    path('instructor/<slug:slug>/publish/', views.CoursePublishView.as_view(), name='course_publish'),
-    path('instructor/<slug:slug>/unpublish/', views.CourseUnpublishView.as_view(), name='course_unpublish'),
-    
-    # Разделы
-    path('instructor/<slug:course_slug>/section/create/', views.SectionCreateView.as_view(), name='section_create'),
-    path('instructor/section/<int:section_id>/edit/', views.SectionUpdateView.as_view(), name='section_update'),
-    path('instructor/section/<int:section_id>/delete/', views.SectionDeleteView.as_view(), name='section_delete'),
-    
-    # Уроки
-    path('instructor/section/<int:section_id>/lesson/create/', views.LessonCreateView.as_view(), name='lesson_create'),
-    path('instructor/lesson/<int:lesson_id>/edit/', views.LessonUpdateView.as_view(), name='lesson_update'),
-    path('instructor/lesson/<int:lesson_id>/delete/', views.LessonDeleteView.as_view(), name='lesson_delete'),
-    
-    # Тесты (Студенты)
-    path('quiz/<int:quiz_id>/', views.QuizTakeView.as_view(), name='quiz_take'),
-    path('quiz/<int:attempt_id>/results/', views.QuizResultsView.as_view(), name='quiz_results'),
+    # Платежи
+    path('checkout/<slug:slug>/', views.CourseCheckoutView.as_view(), name='course_checkout'),
+    path('payment/stripe/<int:purchase_id>/', views.StripePaymentView.as_view(), name='stripe_payment'),
+    path('payment/paypal/<int:purchase_id>/', views.PayPalPaymentView.as_view(), name='paypal_payment'),
+    path('payment/yookassa/<int:purchase_id>/', views.YookassaPaymentView.as_view(), name='yookassa_payment'),
+    path('payment/success/<int:purchase_id>/', views.PaymentSuccessView.as_view(), name='payment_success'),
+    path('payment/failed/<int:purchase_id>/', views.PaymentFailedView.as_view(), name='payment_failed'),
+    path('purchases/', views.PurchaseHistoryView.as_view(), name='purchase_history'),
+    path('refund/<int:purchase_id>/', views.RefundRequestView.as_view(), name='refund_request'),
     
     # Тесты (Преподаватели)
     path('instructor/lesson/<int:lesson_id>/quiz/create/', views.InstructorQuizCreateView.as_view(), name='quiz_create'),

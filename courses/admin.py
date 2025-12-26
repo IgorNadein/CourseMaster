@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission, Certificate
+from .models import (Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, 
+                     Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, 
+                     AssignmentSubmission, Certificate, LessonComment, PaymentMethod, Purchase, 
+                     Payment, PromoCode, Refund)
 
 
 @admin.register(Category)
@@ -210,5 +213,120 @@ class CertificateAdmin(admin.ModelAdmin):
         }),
         ('Snapshot Data', {
             'fields': ('student_name', 'course_title', 'instructor_name')
+        }),
+    )
+
+# ============================================================
+# PAYMENT ADMIN (Система платежей)
+# ============================================================
+
+@admin.register(PaymentMethod)
+class PaymentMethodAdmin(admin.ModelAdmin):
+    list_display = ['name', 'type', 'is_active']
+    list_filter = ['is_active', 'type']
+    search_fields = ['name', 'description']
+
+
+@admin.register(Purchase)
+class PurchaseAdmin(admin.ModelAdmin):
+    list_display = ['student', 'course', 'total_amount', 'status', 'created_at']
+    list_filter = ['status', 'created_at', 'payment_method']
+    search_fields = ['student__username', 'course__title', 'transaction_id']
+    readonly_fields = ['created_at', 'completed_at', 'refunded_at']
+    
+    fieldsets = (
+        ('Purchase Info', {
+            'fields': ('student', 'course', 'payment_method', 'status')
+        }),
+        ('Pricing', {
+            'fields': ('price', 'discount_amount', 'total_amount', 'promo_code')
+        }),
+        ('Payment Details', {
+            'fields': ('transaction_id', 'created_at', 'completed_at')
+        }),
+        ('Refund', {
+            'fields': ('refund_reason', 'refund_amount', 'refunded_at')
+        }),
+    )
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'purchase', 'amount', 'currency', 'status', 'created_at']
+    list_filter = ['status', 'currency', 'created_at']
+    search_fields = ['purchase__student__username', 'stripe_payment_intent_id', 'paypal_order_id']
+    readonly_fields = ['created_at', 'updated_at', 'completed_at']
+    
+    fieldsets = (
+        ('Payment Info', {
+            'fields': ('purchase', 'amount', 'currency', 'status')
+        }),
+        ('Stripe Data', {
+            'fields': ('stripe_payment_intent_id', 'stripe_client_secret')
+        }),
+        ('PayPal Data', {
+            'fields': ('paypal_order_id',)
+        }),
+        ('Yookassa Data', {
+            'fields': ('yookassa_payment_id',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at', 'completed_at')
+        }),
+        ('Error Handling', {
+            'fields': ('error_message',)
+        }),
+    )
+
+
+@admin.register(PromoCode)
+class PromoCodeAdmin(admin.ModelAdmin):
+    list_display = ['code', 'discount_value', 'discount_type', 'is_active', 'current_uses', 'valid_until']
+    list_filter = ['is_active', 'discount_type', 'valid_until']
+    search_fields = ['code', 'description']
+    readonly_fields = ['created_at', 'current_uses']
+    filter_horizontal = ['applicable_courses']
+    
+    fieldsets = (
+        ('Code Info', {
+            'fields': ('code', 'description', 'is_active')
+        }),
+        ('Discount', {
+            'fields': ('discount_type', 'discount_value')
+        }),
+        ('Limits', {
+            'fields': ('max_uses', 'current_uses')
+        }),
+        ('Validity', {
+            'fields': ('valid_from', 'valid_until')
+        }),
+        ('Courses', {
+            'fields': ('applicable_courses',)
+        }),
+        ('Created', {
+            'fields': ('created_at',)
+        }),
+    )
+
+
+@admin.register(Refund)
+class RefundAdmin(admin.ModelAdmin):
+    list_display = ['id', 'student', 'purchase', 'refund_amount', 'status', 'requested_at']
+    list_filter = ['status', 'requested_at']
+    search_fields = ['student__username', 'purchase__course__title', 'reason']
+    readonly_fields = ['requested_at', 'processed_at']
+    
+    fieldsets = (
+        ('Refund Request', {
+            'fields': ('purchase', 'student', 'reason', 'status')
+        }),
+        ('Amount', {
+            'fields': ('refund_amount',)
+        }),
+        ('Timeline', {
+            'fields': ('requested_at', 'processed_at')
+        }),
+        ('Rejection', {
+            'fields': ('rejection_reason',)
         }),
     )
