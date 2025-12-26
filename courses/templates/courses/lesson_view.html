@@ -60,6 +60,25 @@
                 </div>
                 {% endif %}
 
+                <!-- Тест урока -->
+                {% if lesson.quiz %}
+                <div class="mb-4">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-question-circle"></i> {{ lesson.quiz.title }}
+                            </h5>
+                            <p class="card-text text-muted small">
+                                {{ lesson.quiz.questions.count }} вопросов • Проходной балл: {{ lesson.quiz.pass_percentage }}%
+                            </p>
+                            <a href="{% url 'quiz_take' lesson.quiz.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil-square"></i> Пройти тест
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Навигация между уроками -->
                 <div class="d-flex justify-content-between mt-4">
                     {% if previous_lesson %}

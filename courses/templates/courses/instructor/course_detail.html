@@ -117,23 +117,43 @@
                 <!-- Уроки -->
                 <ul class="list-group mt-2">
                     {% for lesson in section.lessons.all %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <i class="bi bi-{% if lesson.lesson_type == 'video' %}play-circle{% elif lesson.lesson_type == 'article' %}file-text{% elif lesson.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
-                            {{ lesson.title }}
-                            <span class="badge bg-secondary ms-2">{{ lesson.get_lesson_type_display }}</span>
-                            {% if lesson.is_preview %}
-                            <span class="badge bg-info ms-1">Бесплатный просмотр</span>
-                            {% endif %}
-                        </div>
-                        <div>
-                            <span class="text-muted me-2">{{ lesson.duration_minutes }} мин</span>
-                            <a href="{% url 'lesson_update' lesson.id %}" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="{% url 'lesson_delete' lesson.id %}" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
-                            </a>
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div>
+                                    <i class="bi bi-{% if lesson.lesson_type == 'video' %}play-circle{% elif lesson.lesson_type == 'article' %}file-text{% elif lesson.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
+                                    <strong>{{ lesson.title }}</strong>
+                                    <span class="badge bg-secondary ms-2">{{ lesson.get_lesson_type_display }}</span>
+                                    {% if lesson.is_preview %}
+                                    <span class="badge bg-info ms-1">Бесплатный просмотр</span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted ms-4 d-block mt-1">{{ lesson.duration_minutes }} мин</small>
+                                
+                                <!-- Информация о тесте -->
+                                {% if lesson.quiz %}
+                                <small class="text-success d-block ms-4 mt-1">
+                                    <i class="bi bi-check-circle"></i> Тест: {{ lesson.quiz.questions.count }} вопросов
+                                </small>
+                                {% else %}
+                                <small class="text-muted d-block ms-4 mt-1">
+                                    <i class="bi bi-question-circle"></i> <a href="{% url 'quiz_create' lesson.id %}">Добавить тест</a>
+                                </small>
+                                {% endif %}
+                            </div>
+                            <div class="btn-group" role="group">
+                                {% if lesson.quiz %}
+                                <a href="{% url 'instructor_quiz_detail' lesson.quiz.id %}" class="btn btn-sm btn-info" title="Управление тестом">
+                                    <i class="bi bi-question-circle"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'lesson_update' lesson.id %}" class="btn btn-sm btn-outline-secondary" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'lesson_delete' lesson.id %}" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
                         </div>
                     </li>
                     {% empty %}
