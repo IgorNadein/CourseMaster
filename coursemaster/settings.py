@@ -121,8 +121,21 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATIC_DIRS = [
+STATICFILES_DIRS = [
     BASE_DIR / 'static',  # Папка со статическими файлами (в разработке)
+]
+
+# Для development - использовать StaticFilesStorage (найти файлы в STATIC_DIRS)
+# Для production - использовать ManifestStaticFilesStorage после collectstatic
+if DEBUG:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+else:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
+# Static files finders - где искать статические файлы
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',  # Ищет в STATIC_DIRS
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',  # Ищет в app/static/
 ]
 
 # Media files (User uploads)
