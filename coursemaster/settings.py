@@ -57,8 +57,8 @@ ROOT_URLCONF = 'coursemaster.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
+        'DIRS': [BASE_DIR / 'templates'],  # Единая папка шаблонов
+        'APP_DIRS': False,  # Отключено - используем только централизованную папку templates/
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -121,6 +121,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_DIRS = [
+    BASE_DIR / 'static',  # Папка со статическими файлами (в разработке)
+]
 
 # Media files (User uploads)
 MEDIA_URL = 'media/'
