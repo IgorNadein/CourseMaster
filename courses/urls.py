@@ -8,6 +8,13 @@ urlpatterns = [
     path('lesson/<int:lesson_id>/', views.LessonView.as_view(), name='lesson_view'),
     path('lesson/<int:lesson_id>/complete/', views.LessonCompleteView.as_view(), name='lesson_complete'),
     
+    # Сертификаты
+    path('certificates/', views.MyCertificatesView.as_view(), name='my_certificates'),
+    path('certificate/<str:certificate_number>/', views.CertificateDetailView.as_view(), name='certificate_detail'),
+    path('certificate/<str:certificate_number>/print/', views.CertificatePrintView.as_view(), name='certificate_print'),
+    path('verify/', views.CertificateVerifyView.as_view(), name='certificate_verify'),
+    path('verify/<str:certificate_number>/', views.CertificateVerifyView.as_view(), name='certificate_verify_number'),
+    
     # Преподавательские URLs
     path('instructor/', views.InstructorCoursesView.as_view(), name='instructor_courses'),
     path('instructor/create/', views.CourseCreateView.as_view(), name='course_create'),

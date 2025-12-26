@@ -7,8 +7,15 @@
     <!-- Заголовок -->
     <div class="row mb-4">
         <div class="col">
-            <h1 class="display-4">Мои курсы</h1>
-            <p class="lead text-muted">Продолжайте обучение и отслеживайте свой прогресс</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-4">Мои курсы</h1>
+                    <p class="lead text-muted">Продолжайте обучение и отслеживайте свой прогресс</p>
+                </div>
+                <a href="{% url 'my_certificates' %}" class="btn btn-outline-warning">
+                    <i class="bi bi-award me-1"></i> Мои сертификаты
+                </a>
+            </div>
         </div>
     </div>
 
@@ -104,6 +111,12 @@
                                 <div class="alert alert-success py-2 mb-2">
                                     <i class="bi bi-check-circle-fill"></i> Курс завершен {{ enrollment.completed_at|date:"d.m.Y" }}
                                 </div>
+                                    {% if enrollment.certificate %}
+                                    <a href="{% url 'certificate_detail' enrollment.certificate.certificate_number %}" 
+                                       class="btn btn-outline-warning btn-sm w-100 mb-2">
+                                        <i class="bi bi-award me-1"></i> Сертификат
+                                    </a>
+                                    {% endif %}
                                 {% else %}
                                 <small class="text-muted d-block mb-2">
                                     Начат {{ enrollment.enrolled_at|date:"d.m.Y" }}

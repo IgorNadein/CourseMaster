@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission
+from .models import Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission, Certificate
 
 
 @admin.register(Category)
@@ -196,3 +196,19 @@ class AssignmentSubmissionAdmin(admin.ModelAdmin):
     is_late.boolean = True
     is_late.short_description = 'Late'
 
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    list_display = ['certificate_number', 'student_name', 'course_title', 'issued_at']
+    list_filter = ['issued_at']
+    search_fields = ['certificate_number', 'student_name', 'course_title']
+    readonly_fields = ['certificate_number', 'issued_at', 'student_name', 'course_title', 'instructor_name']
+    
+    fieldsets = (
+        ('Certificate Info', {
+            'fields': ('certificate_number', 'enrollment', 'issued_at')
+        }),
+        ('Snapshot Data', {
+            'fields': ('student_name', 'course_title', 'instructor_name')
+        }),
+    )

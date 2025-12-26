@@ -378,3 +378,38 @@ class AssignmentSubmission(models.Model):
             return False
         return self.submitted_at > self.assignment.due_date
 
+
+class Certificate(models.Model):
+    """
+    Сертификат о завершении курса
+    Выдается автоматически при достижении 100% прогресса
+    """
+    enrollment = models.OneToOneField(Enrollment, on_delete=models.CASCADE, related_name='certificate')
+    certificate_number = models.CharField(max_length=50, unique=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+    
+    # Данные на момент выдачи (для неизменности сертификата)
+    student_name = models.CharField(max_length=200)
+    course_title = models.CharField(max_length=200)
+    instructor_name = models.CharField(max_length=200)
+    
+    class Meta:
+        ordering = ['-issued_at']
+    
+    def __str__(self):
+        return f"Certificate #{self.certificate_number} - {self.student_name}"
+    
+    def save(self, *args, **kwargs):
+        if not self.certificate_number:
+            import uuid
+            self.certificate_number = f"CM-{uuid.uuid4().hex[:8].upper()}"
+        if not self.student_name:
+            user = self.enrollment.student
+            self.student_name = user.get_full_name() or user.username
+        if not self.course_title:
+            self.course_title = self.enrollment.course.title
+        if not self.instructor_name:
+            instructor = self.enrollment.course.instructor
+            self.instructor_name = instructor.get_full_name() or instructor.username
+        super().save(*args, **kwargs)
+

@@ -6,9 +6,11 @@ from django.contrib import messages
 from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.urls import reverse_lazy, reverse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
-                     Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission)
+                     Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission,
+                     Certificate)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
                     QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm)
 
@@ -335,10 +337,19 @@ class LessonCompleteView(LoginRequiredMixin, View):
             if enrollment.progress_percentage >= 100:
                 enrollment.completed = True
                 enrollment.completed_at = timezone.now()
-                messages.success(
-                    request,
-                    f'🎉 Поздравляем! Вы завершили курс "{course.title}"!'
-                )
+                
+                # Автоматически выдать сертификат
+                if not hasattr(enrollment, 'certificate'):
+                    Certificate.objects.create(enrollment=enrollment)
+                    messages.success(
+                        request,
+                        f'🎉 Поздравляем! Вы завершили курс "{course.title}" и получили сертификат!'
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f'🎉 Поздравляем! Вы завершили курс "{course.title}"!'
+                    )
             
             enrollment.save()
             
@@ -1326,3 +1337,81 @@ class CourseReviewsView(ListView):
             ).first()
         
         return context
+
+
+# ============================================================
+# CERTIFICATE VIEWS (Система сертификатов)
+# ============================================================
+
+class MyCertificatesView(LoginRequiredMixin, ListView):
+    """
+    Список сертификатов студента
+    """
+    model = Certificate
+    template_name = 'courses/my_certificates.html'
+    context_object_name = 'certificates'
+    
+    def get_queryset(self):
+        return Certificate.objects.filter(
+            enrollment__student=self.request.user
+        ).select_related('enrollment__course').order_by('-issued_at')
+
+
+class CertificateDetailView(LoginRequiredMixin, DetailView):
+    """
+    Просмотр сертификата
+    """
+    model = Certificate
+    template_name = 'courses/certificate_detail.html'
+    context_object_name = 'certificate'
+    
+    def get_object(self, queryset=None):
+        certificate_number = self.kwargs.get('certificate_number')
+        return get_object_or_404(Certificate, certificate_number=certificate_number)
+
+
+class CertificateVerifyView(View):
+    """
+    Публичная проверка подлинности сертификата
+    """
+    template_name = 'courses/certificate_verify.html'
+    
+    def get(self, request, certificate_number=None):
+        certificate = None
+        searched = False
+        
+        if certificate_number:
+            searched = True
+            certificate = Certificate.objects.filter(
+                certificate_number=certificate_number
+            ).first()
+        
+        return render(request, self.template_name, {
+            'certificate': certificate,
+            'searched': searched,
+            'certificate_number': certificate_number
+        })
+    
+    def post(self, request):
+        certificate_number = request.POST.get('certificate_number', '').strip().upper()
+        return redirect('certificate_verify_number', certificate_number=certificate_number)
+
+
+class CertificatePrintView(LoginRequiredMixin, View):
+    """
+    Версия сертификата для печати (HTML)
+    """
+    def get(self, request, certificate_number):
+        certificate = get_object_or_404(Certificate, certificate_number=certificate_number)
+        
+        # Проверка: студент или преподаватель курса
+        is_owner = certificate.enrollment.student == request.user
+        is_instructor = certificate.enrollment.course.instructor == request.user
+        
+        if not (is_owner or is_instructor or request.user.is_staff):
+            messages.error(request, 'У вас нет доступа к этому сертификату.')
+            return redirect('my_courses')
+        
+        return render(request, 'courses/certificate_print.html', {
+            'certificate': certificate
+        })
