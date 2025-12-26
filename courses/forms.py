@@ -1,5 +1,5 @@
 from django import forms
-from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, AssignmentSubmission
+from .models import Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, AssignmentSubmission, Review
 
 
 class CourseForm(forms.ModelForm):
@@ -320,4 +320,29 @@ class AssignmentGradeForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': 'Ваш комментарий к работе студента...'
             }),
+        }
+
+
+class ReviewForm(forms.ModelForm):
+    """Форма отзыва о курсе"""
+    
+    class Meta:
+        model = Review
+        fields = ['rating', 'title', 'comment']
+        widgets = {
+            'rating': forms.RadioSelect(attrs={'class': 'star-rating'}),
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Заголовок отзыва (необязательно)'
+            }),
+            'comment': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Поделитесь своим мнением о курсе...'
+            }),
+        }
+        labels = {
+            'rating': 'Оценка',
+            'title': 'Заголовок',
+            'comment': 'Отзыв',
         }

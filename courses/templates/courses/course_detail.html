@@ -153,29 +153,70 @@
             {% endif %}
 
             <!-- Отзывы -->
-            {% if reviews %}
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h3 class="mb-0">Отзывы студентов</h3>
+                    <div>
+                        {% if avg_rating %}
+                            <span class="me-2">
+                                <i class="bi bi-star-fill text-warning"></i> 
+                                {{ avg_rating|floatformat:1 }}
+                            </span>
+                        {% endif %}
+                        <a href="{% url 'course_reviews' course.slug %}" class="btn btn-sm btn-outline-primary">
+                            Все отзывы ({{ total_reviews }})
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
-                    {% for review in reviews %}
-                    <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <strong>{{ review.student.get_full_name|default:review.student.username }}</strong>
-                            <div>
-                                {% for i in "12345" %}
-                                <i class="bi bi-star{% if forloop.counter <= review.rating %}-fill text-warning{% endif %}"></i>
-                                {% endfor %}
+                    {% if reviews %}
+                        {% for review in reviews %}
+                        <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>{{ review.student.get_full_name|default:review.student.username }}</strong>
+                                <div>
+                                    {% for i in "12345" %}
+                                    <i class="bi bi-star{% if forloop.counter <= review.rating %}-fill text-warning{% endif %}"></i>
+                                    {% endfor %}
+                                </div>
                             </div>
+                            {% if review.title %}
+                            <h6>{{ review.title }}</h6>
+                            {% endif %}
+                            <p class="mb-1">{{ review.comment|truncatewords:30 }}</p>
+                            <small class="text-muted">{{ review.created_at|date:"d.m.Y" }}</small>
                         </div>
-                        {% if review.title %}
-                        <h6>{{ review.title }}</h6>
+                        {% endfor %}
+                        
+                        {% if reviews_count > 10 %}
+                        <div class="text-center">
+                            <a href="{% url 'course_reviews' course.slug %}" class="btn btn-outline-primary">
+                                Показать все {{ reviews_count }} отзывов
+                            </a>
+                        </div>
                         {% endif %}
-                        <p class="mb-1">{{ review.comment }}</p>
-                        <small class="text-muted">{{ review.created_at|date:"d.m.Y" }}</small>
-                    </div>
-                    {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-chat-square-text display-4 text-muted"></i>
+                            <p class="text-muted mt-2 mb-0">Пока нет отзывов</p>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Кнопка оставить отзыв -->
+                    {% if user.is_authenticated and is_enrolled %}
+                        <hr>
+                        <div class="text-center">
+                            {% if user_review %}
+                                <a href="{% url 'review_update' course.slug %}" class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil me-1"></i> Редактировать мой отзыв
+                                </a>
+                            {% else %}
+                                <a href="{% url 'review_create' course.slug %}" class="btn btn-primary">
+                                    <i class="bi bi-star me-1"></i> Оставить отзыв
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}

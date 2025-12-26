@@ -44,6 +44,12 @@ urlpatterns = [
     path('instructor/assignment/<int:assignment_id>/', views.InstructorAssignmentDetailView.as_view(), name='instructor_assignment_detail'),
     path('instructor/submission/<int:submission_id>/grade/', views.InstructorAssignmentGradeView.as_view(), name='assignment_grade'),
     
+    # Отзывы и рейтинги
+    path('<slug:slug>/reviews/', views.CourseReviewsView.as_view(), name='course_reviews'),
+    path('<slug:slug>/review/create/', views.ReviewCreateView.as_view(), name='review_create'),
+    path('<slug:slug>/review/edit/', views.ReviewUpdateView.as_view(), name='review_update'),
+    path('<slug:slug>/review/delete/', views.ReviewDeleteView.as_view(), name='review_delete'),
+    
     # Детальная страница курса (должна быть в конце)
     path('<slug:slug>/', views.CourseDetailView.as_view(), name='course_detail'),
     path('<slug:slug>/enroll/', views.CourseEnrollView.as_view(), name='course_enroll'),

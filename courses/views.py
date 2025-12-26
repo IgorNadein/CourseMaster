@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
-                    QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm)
+                    QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm)
 
 
 class CourseListView(ListView):
@@ -141,6 +141,12 @@ class CourseDetailView(DetailView):
                 )
                 context['enrollment'] = enrollment
                 context['progress_percentage'] = enrollment.progress_percentage
+            
+            # Проверка: есть ли отзыв от пользователя
+            context['user_review'] = Review.objects.filter(
+                student=self.request.user,
+                course=course
+            ).first()
         else:
             context['is_enrolled'] = False
         
@@ -1107,3 +1113,216 @@ class InstructorAssignmentCreateView(LoginRequiredMixin, UserPassesTestMixin, Cr
         context['course'] = lesson.section.course
         return context
 
+
+# ============================================================
+# REVIEW VIEWS (Система отзывов и рейтингов)
+# ============================================================
+
+class ReviewCreateView(LoginRequiredMixin, CreateView):
+    """
+    Студент оставляет отзыв о курсе
+    """
+    model = Review
+    form_class = ReviewForm
+    template_name = 'courses/review_form.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        self.course = get_object_or_404(Course, slug=kwargs.get('slug'))
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course'] = self.course
+        
+        # Проверка: записан ли студент на курс
+        context['is_enrolled'] = Enrollment.objects.filter(
+            student=self.request.user,
+            course=self.course
+        ).exists()
+        
+        # Проверка: уже есть отзыв?
+        context['existing_review'] = Review.objects.filter(
+            student=self.request.user,
+            course=self.course
+        ).first()
+        
+        return context
+    
+    def form_valid(self, form):
+        # Проверка: записан ли студент на курс
+        if not Enrollment.objects.filter(student=self.request.user, course=self.course).exists():
+            messages.error(self.request, 'Вы должны быть записаны на курс, чтобы оставить отзыв.')
+            return redirect('course_detail', slug=self.course.slug)
+        
+        # Проверка: уже есть отзыв?
+        existing = Review.objects.filter(student=self.request.user, course=self.course).first()
+        if existing:
+            messages.info(self.request, 'Вы уже оставили отзыв. Вы можете его отредактировать.')
+            return redirect('review_update', slug=self.course.slug)
+        
+        form.instance.course = self.course
+        form.instance.student = self.request.user
+        
+        response = super().form_valid(form)
+        
+        # Обновить средний рейтинг курса
+        self._update_course_rating()
+        
+        messages.success(self.request, 'Спасибо за ваш отзыв!')
+        return response
+    
+    def _update_course_rating(self):
+        """Обновить средний рейтинг и количество отзывов курса"""
+        stats = Review.objects.filter(
+            course=self.course,
+            is_approved=True
+        ).aggregate(
+            avg_rating=Avg('rating'),
+            total_reviews=Count('id')
+        )
+        self.course.average_rating = stats['avg_rating'] or 0
+        self.course.total_reviews = stats['total_reviews']
+        self.course.save(update_fields=['average_rating', 'total_reviews'])
+    
+    def get_success_url(self):
+        return reverse('course_detail', kwargs={'slug': self.course.slug})
+
+
+class ReviewUpdateView(LoginRequiredMixin, UpdateView):
+    """
+    Студент редактирует свой отзыв
+    """
+    model = Review
+    form_class = ReviewForm
+    template_name = 'courses/review_form.html'
+    
+    def get_object(self, queryset=None):
+        course = get_object_or_404(Course, slug=self.kwargs.get('slug'))
+        return get_object_or_404(Review, course=course, student=self.request.user)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course'] = self.object.course
+        context['is_editing'] = True
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        
+        # Обновить средний рейтинг курса
+        self._update_course_rating()
+        
+        messages.success(self.request, 'Ваш отзыв обновлен!')
+        return response
+    
+    def _update_course_rating(self):
+        """Обновить средний рейтинг и количество отзывов курса"""
+        course = self.object.course
+        stats = Review.objects.filter(
+            course=course,
+            is_approved=True
+        ).aggregate(
+            avg_rating=Avg('rating'),
+            total_reviews=Count('id')
+        )
+        course.average_rating = stats['avg_rating'] or 0
+        course.total_reviews = stats['total_reviews']
+        course.save(update_fields=['average_rating', 'total_reviews'])
+    
+    def get_success_url(self):
+        return reverse('course_detail', kwargs={'slug': self.object.course.slug})
+
+
+class ReviewDeleteView(LoginRequiredMixin, DeleteView):
+    """
+    Студент удаляет свой отзыв
+    """
+    model = Review
+    template_name = 'courses/review_confirm_delete.html'
+    
+    def get_object(self, queryset=None):
+        course = get_object_or_404(Course, slug=self.kwargs.get('slug'))
+        return get_object_or_404(Review, course=course, student=self.request.user)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course'] = self.object.course
+        return context
+    
+    def delete(self, request, *args, **kwargs):
+        course = self.get_object().course
+        response = super().delete(request, *args, **kwargs)
+        
+        # Обновить средний рейтинг курса
+        stats = Review.objects.filter(
+            course=course,
+            is_approved=True
+        ).aggregate(
+            avg_rating=Avg('rating'),
+            total_reviews=Count('id')
+        )
+        course.average_rating = stats['avg_rating'] or 0
+        course.total_reviews = stats['total_reviews']
+        course.save(update_fields=['average_rating', 'total_reviews'])
+        
+        messages.success(request, 'Ваш отзыв удален.')
+        return response
+    
+    def get_success_url(self):
+        return reverse('course_detail', kwargs={'slug': self.kwargs.get('slug')})
+
+
+class CourseReviewsView(ListView):
+    """
+    Все отзывы о курсе (пагинация)
+    """
+    model = Review
+    template_name = 'courses/course_reviews.html'
+    context_object_name = 'reviews'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        self.course = get_object_or_404(Course, slug=self.kwargs.get('slug'))
+        return Review.objects.filter(
+            course=self.course,
+            is_approved=True
+        ).select_related('student').order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course'] = self.course
+        
+        # Статистика рейтинга
+        stats = Review.objects.filter(
+            course=self.course,
+            is_approved=True
+        ).aggregate(
+            avg_rating=Avg('rating'),
+            total_reviews=Count('id')
+        )
+        context['avg_rating'] = stats['avg_rating'] or 0
+        context['total_reviews'] = stats['total_reviews']
+        
+        # Распределение оценок
+        rating_distribution = {}
+        for i in range(1, 6):
+            count = Review.objects.filter(
+                course=self.course,
+                is_approved=True,
+                rating=i
+            ).count()
+            rating_distribution[i] = count
+        context['rating_distribution'] = rating_distribution
+        
+        # Проверка: пользователь записан и может оставить отзыв
+        if self.request.user.is_authenticated:
+            context['is_enrolled'] = Enrollment.objects.filter(
+                student=self.request.user,
+                course=self.course
+            ).exists()
+            context['user_review'] = Review.objects.filter(
+                student=self.request.user,
+                course=self.course
+            ).first()
+        
+        return context
