@@ -1,0 +1,60 @@
+<!-- Pagination Component -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination">
+    <style>
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        .pagination a, .pagination span {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+        }
+        .pagination a:hover {
+            background-color: #5624d0;
+            color: white;
+            border-color: #5624d0;
+        }
+        .pagination .current {
+            background-color: #5624d0;
+            color: white;
+            border-color: #5624d0;
+        }
+        .pagination .disabled {
+            color: #ccc;
+            pointer-events: none;
+        }
+    </style>
+    
+    {% if page_obj.has_previous %}
+        <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; Первая</a>
+        <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&lsaquo; Назад</a>
+    {% else %}
+        <span class="disabled">&laquo; Первая</span>
+        <span class="disabled">&lsaquo; Назад</span>
+    {% endif %}
+    
+    {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+            <span class="current">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+        {% endif %}
+    {% endfor %}
+    
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Вперед &rsaquo;</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Последняя &raquo;</a>
+    {% else %}
+        <span class="disabled">Вперед &rsaquo;</span>
+        <span class="disabled">Последняя &raquo;</span>
+    {% endif %}
+</nav>
+{% endif %}

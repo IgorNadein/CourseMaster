@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}Отзывы - {{ course.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Хлебные крошки -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'course_list' %}">Каталог</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'course_detail' course.slug %}">{{ course.title|truncatewords:5 }}</a></li>
+            <li class="breadcrumb-item active">Отзывы</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Статистика рейтинга (левая колонка) -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-body text-center">
+                    <h2 class="display-3 text-warning mb-0">
+                        {{ avg_rating|floatformat:1 }}
+                    </h2>
+                    <div class="mb-2">
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= avg_rating %}
+                                <i class="bi bi-star-fill text-warning fs-5"></i>
+                            {% elif forloop.counter <= avg_rating|add:"0.5" %}
+                                <i class="bi bi-star-half text-warning fs-5"></i>
+                            {% else %}
+                                <i class="bi bi-star text-muted fs-5"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted">{{ total_reviews }} отзыв{{ total_reviews|pluralize:"ов,а," }}</p>
+                    
+                    <!-- Распределение оценок -->
+                    <hr>
+                    <div class="rating-distribution">
+                        {% for star, count in rating_distribution.items reversed %}
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="me-2" style="width: 60px;">{{ star }} <i class="bi bi-star-fill text-warning"></i></span>
+                                <div class="progress flex-grow-1" style="height: 10px;">
+                                    {% if total_reviews > 0 %}
+                                        <div class="progress-bar bg-warning" style="width: {% widthratio count total_reviews 100 %}%"></div>
+                                    {% endif %}
+                                </div>
+                                <span class="ms-2 text-muted" style="width: 30px;">{{ count }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Кнопка оставить отзыв -->
+                    {% if user.is_authenticated and is_enrolled %}
+                        <hr>
+                        {% if user_review %}
+                            <a href="{% url 'review_update' course.slug %}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-pencil me-1"></i> Редактировать отзыв
+                            </a>
+                        {% else %}
+                            <a href="{% url 'review_create' course.slug %}" class="btn btn-primary w-100">
+                                <i class="bi bi-star me-1"></i> Оставить отзыв
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Список отзывов (правая колонка) -->
+        <div class="col-lg-8">
+            <h4 class="mb-4">
+                <i class="bi bi-chat-quote me-2"></i>
+                Отзывы студентов
+            </h4>
+
+            {% if reviews %}
+                {% for review in reviews %}
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                         style="width: 48px; height: 48px; font-size: 1.2rem;">
+                                        {{ review.student.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ review.student.get_full_name|default:review.student.username }}</h6>
+                                        <small class="text-muted">
+                                            {{ review.created_at|date:"d.m.Y" }}
+                                            {% if review.updated_at != review.created_at %}
+                                                (изменён)
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= review.rating %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                            <i class="bi bi-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            {% if review.title %}
+                                <h6 class="fw-bold">{{ review.title }}</h6>
+                            {% endif %}
+                            
+                            <p class="mb-0">{{ review.comment }}</p>
+                            
+                            {% if user == review.student %}
+                                <hr>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'review_update' course.slug %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil me-1"></i> Редактировать
+                                    </a>
+                                    <a href="{% url 'review_delete' course.slug %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash me-1"></i> Удалить
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <!-- Пагинация -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Навигация по страницам" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">&laquo; Первая</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Назад</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Далее</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Последняя &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-chat-square-text display-1 text-muted"></i>
+                    <h5 class="mt-3 text-muted">Пока нет отзывов</h5>
+                    <p class="text-muted">Станьте первым, кто оставит отзыв об этом курсе!</p>
+                    {% if user.is_authenticated and is_enrolled %}
+                        <a href="{% url 'review_create' course.slug %}" class="btn btn-primary">
+                            <i class="bi bi-star me-1"></i> Оставить отзыв
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

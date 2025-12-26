@@ -23,7 +23,7 @@ class CourseListView(ListView):
     Каталог курсов для студентов с фильтрацией и поиском
     """
     model = Course
-    template_name = 'courses/course_list.html'
+    template_name = 'courses/catalog/course_list.html'
     context_object_name = 'courses'
     paginate_by = 12
     
@@ -91,7 +91,7 @@ class CourseDetailView(DetailView):
     Детальная страница курса с программой и отзывами
     """
     model = Course
-    template_name = 'courses/course_detail.html'
+    template_name = 'courses/catalog/course_detail.html'
     context_object_name = 'course'
     slug_field = 'slug'
     slug_url_kwarg = 'slug'
@@ -200,7 +200,7 @@ class MyCoursesView(LoginRequiredMixin, ListView):
     Личный кабинет студента - курсы в процессе обучения
     """
     model = Enrollment
-    template_name = 'courses/my_courses.html'
+    template_name = 'courses/learning/my_courses.html'
     context_object_name = 'enrollments'
     paginate_by = 10
     
@@ -235,7 +235,7 @@ class LessonView(LoginRequiredMixin, DetailView):
     Просмотр урока (только для записанных студентов)
     """
     model = Lesson
-    template_name = 'courses/lesson_view.html'
+    template_name = 'courses/learning/lesson_view.html'
     context_object_name = 'lesson'
     pk_url_kwarg = 'lesson_id'
     
@@ -733,7 +733,7 @@ class QuizTakeView(LoginRequiredMixin, View):
     """
     Студент проходит тест
     """
-    template_name = 'courses/quiz_take.html'
+    template_name = 'courses/learning/quiz_take.html'
     
     def get(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
@@ -840,7 +840,7 @@ class QuizResultsView(LoginRequiredMixin, DetailView):
     Результаты теста студента
     """
     model = QuizAttempt
-    template_name = 'courses/quiz_results.html'
+    template_name = 'courses/learning/quiz_results.html'
     context_object_name = 'attempt'
     pk_url_kwarg = 'attempt_id'
     
@@ -962,7 +962,7 @@ class AssignmentSubmitView(LoginRequiredMixin, CreateView):
     """
     model = AssignmentSubmission
     form_class = AssignmentSubmissionForm
-    template_name = 'courses/assignment_submit.html'
+    template_name = 'courses/assignments/assignment_submit.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1151,7 +1151,7 @@ class ReviewCreateView(LoginRequiredMixin, CreateView):
     """
     model = Review
     form_class = ReviewForm
-    template_name = 'courses/review_form.html'
+    template_name = 'courses/reviews/review_form.html'
     
     def dispatch(self, request, *args, **kwargs):
         self.course = get_object_or_404(Course, slug=kwargs.get('slug'))
@@ -1221,7 +1221,7 @@ class ReviewUpdateView(LoginRequiredMixin, UpdateView):
     """
     model = Review
     form_class = ReviewForm
-    template_name = 'courses/review_form.html'
+    template_name = 'courses/reviews/review_form.html'
     
     def get_object(self, queryset=None):
         course = get_object_or_404(Course, slug=self.kwargs.get('slug'))
@@ -1265,7 +1265,7 @@ class ReviewDeleteView(LoginRequiredMixin, DeleteView):
     Студент удаляет свой отзыв
     """
     model = Review
-    template_name = 'courses/review_confirm_delete.html'
+    template_name = 'courses/reviews/review_confirm_delete.html'
     
     def get_object(self, queryset=None):
         course = get_object_or_404(Course, slug=self.kwargs.get('slug'))
@@ -1304,7 +1304,7 @@ class CourseReviewsView(ListView):
     Все отзывы о курсе (пагинация)
     """
     model = Review
-    template_name = 'courses/course_reviews.html'
+    template_name = 'courses/reviews/course_reviews.html'
     context_object_name = 'reviews'
     paginate_by = 10
     
@@ -1364,7 +1364,7 @@ class MyCertificatesView(LoginRequiredMixin, ListView):
     Список сертификатов студента
     """
     model = Certificate
-    template_name = 'courses/my_certificates.html'
+    template_name = 'courses/certificates/my_certificates.html'
     context_object_name = 'certificates'
     
     def get_queryset(self):
@@ -1378,7 +1378,7 @@ class CertificateDetailView(LoginRequiredMixin, DetailView):
     Просмотр сертификата
     """
     model = Certificate
-    template_name = 'courses/certificate_detail.html'
+    template_name = 'courses/certificates/certificate_detail.html'
     context_object_name = 'certificate'
     
     def get_object(self, queryset=None):
@@ -1390,7 +1390,7 @@ class CertificateVerifyView(View):
     """
     Публичная проверка подлинности сертификата
     """
-    template_name = 'courses/certificate_verify.html'
+    template_name = 'courses/certificates/certificate_verify.html'
     
     def get(self, request, certificate_number=None):
         certificate = None
@@ -1428,7 +1428,7 @@ class CertificatePrintView(LoginRequiredMixin, View):
             messages.error(request, 'У вас нет доступа к этому сертификату.')
             return redirect('my_courses')
         
-        return render(request, 'courses/certificate_print.html', {
+        return render(request, 'courses/certificates/certificate_print.html', {
             'certificate': certificate
         })
 
@@ -1479,7 +1479,7 @@ class LessonCommentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateVie
     """
     model = LessonComment
     form_class = LessonCommentForm
-    template_name = 'courses/comment_form.html'
+    template_name = 'courses/comments/comment_form.html'
     pk_url_kwarg = 'comment_id'
     
     def test_func(self):
@@ -1505,7 +1505,7 @@ class LessonCommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteVie
     Удаление комментария
     """
     model = LessonComment
-    template_name = 'courses/comment_confirm_delete.html'
+    template_name = 'courses/comments/comment_confirm_delete.html'
     pk_url_kwarg = 'comment_id'
     
     def test_func(self):
@@ -1555,7 +1555,7 @@ class CourseCheckoutView(LoginRequiredMixin, View):
     """
     Страница оформления покупки курса
     """
-    template_name = 'courses/checkout.html'
+    template_name = 'courses/payments/checkout.html'
     
     def get(self, request, slug):
         course = get_object_or_404(Course, slug=slug, status='published')
@@ -1669,7 +1669,7 @@ class StripePaymentView(LoginRequiredMixin, View):
     """
     Обработка платежа через Stripe
     """
-    template_name = 'courses/stripe_payment.html'
+    template_name = 'courses/payments/stripe_payment.html'
     
     def get(self, request, purchase_id):
         purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
@@ -1736,7 +1736,7 @@ class PayPalPaymentView(LoginRequiredMixin, View):
     """
     Обработка платежа через PayPal
     """
-    template_name = 'courses/paypal_payment.html'
+    template_name = 'courses/payments/paypal_payment.html'
     
     def get(self, request, purchase_id):
         purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
@@ -1753,7 +1753,7 @@ class YookassaPaymentView(LoginRequiredMixin, View):
     """
     Обработка платежа через Yookassa (Яндекс.Касса)
     """
-    template_name = 'courses/yookassa_payment.html'
+    template_name = 'courses/payments/yookassa_payment.html'
     
     def get(self, request, purchase_id):
         purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='pending')
@@ -1770,7 +1770,7 @@ class PaymentSuccessView(LoginRequiredMixin, View):
     """
     Страница успешной оплаты
     """
-    template_name = 'courses/payment_success.html'
+    template_name = 'courses/payments/payment_success.html'
     
     def get(self, request, purchase_id):
         purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='completed')
@@ -1787,7 +1787,7 @@ class PaymentFailedView(LoginRequiredMixin, View):
     """
     Страница ошибки платежа
     """
-    template_name = 'courses/payment_failed.html'
+    template_name = 'courses/payments/payment_failed.html'
     
     def get(self, request, purchase_id):
         purchase = get_object_or_404(Purchase, id=purchase_id, student=request.user, status='failed')
@@ -1805,7 +1805,7 @@ class PurchaseHistoryView(LoginRequiredMixin, ListView):
     История покупок студента
     """
     model = Purchase
-    template_name = 'courses/purchase_history.html'
+    template_name = 'courses/payments/purchase_history.html'
     context_object_name = 'purchases'
     paginate_by = 10
     
@@ -1827,7 +1827,7 @@ class RefundRequestView(LoginRequiredMixin, CreateView):
     """
     model = Refund
     form_class = RefundRequestForm
-    template_name = 'courses/refund_request.html'
+    template_name = 'courses/payments/refund_request.html'
     
     def dispatch(self, request, *args, **kwargs):
         self.purchase = get_object_or_404(Purchase, id=kwargs.get('purchase_id'), student=request.user, status='completed')

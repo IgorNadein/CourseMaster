@@ -1,0 +1,29 @@
+<!-- Star Rating Component -->
+<!-- Usage: {% include 'includes/_star_rating.html' with rating=course.average_rating %} -->
+{% load mathfilters %}
+<span class="star-rating" title="{{ rating|floatformat:1 }} из 5">
+    <style>
+        .star-rating {
+            color: #f4c150;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .star-rating .star {
+            margin-right: 2px;
+        }
+        .star-rating .rating-value {
+            color: #333;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+    </style>
+    {% for i in "12345" %}
+        {% if forloop.counter <= rating|floatformat:0|default:0 %}
+            <span class="star">★</span>
+        {% else %}
+            <span class="star">☆</span>
+        {% endif %}
+    {% endfor %}
+    {% if show_value %}<span class="rating-value">({{ rating|floatformat:1 }})</span>{% endif %}
+</span>

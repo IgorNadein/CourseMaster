@@ -1,0 +1,14 @@
+<!-- Messages Component -->
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li class="message {{ message.tags }}">
+        {% if message.tags == 'success' %}✓{% endif %}
+        {% if message.tags == 'error' %}✕{% endif %}
+        {% if message.tags == 'warning' %}⚠{% endif %}
+        {% if message.tags == 'info' %}ℹ{% endif %}
+        {{ message }}
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}

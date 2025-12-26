@@ -1,0 +1,382 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ lesson.title }} - {{ course.title }} - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Основной контент урока -->
+        <div class="col-lg-9 p-0">
+            <!-- Видео плеер или контент -->
+            {% if lesson.lesson_type == 'video' and lesson.video_url %}
+            <div class="ratio ratio-16x9 bg-dark">
+                <iframe src="{{ lesson.video_url }}" allowfullscreen></iframe>
+            </div>
+            {% else %}
+            <div class="p-4 bg-light" style="min-height: 400px;">
+                <h2>{{ lesson.title }}</h2>
+                <div class="content">
+                    {{ lesson.content|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Контент урока -->
+            <div class="p-4">
+                <!-- Заголовок и навигация -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h3>{{ lesson.title }}</h3>
+                        <p class="text-muted mb-0">
+                            <a href="{% url 'course_detail' course.slug %}" class="text-decoration-none">
+                                {{ course.title }}
+                            </a> • {{ section.title }}
+                        </p>
+                    </div>
+                    <div>
+                        {% if is_completed %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle-fill"></i> Пройдено
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Описание урока -->
+                {% if lesson.content and lesson.lesson_type == 'video' %}
+                <div class="mb-4">
+                    <h5>Описание</h5>
+                    <div>{{ lesson.content|linebreaks }}</div>
+                </div>
+                {% endif %}
+
+                <!-- Вложения -->
+                {% if lesson.attachment %}
+                <div class="mb-4">
+                    <h5>Материалы</h5>
+                    <a href="{{ lesson.attachment.url }}" class="btn btn-outline-primary" download>
+                        <i class="bi bi-download"></i> Скачать материалы
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Тест урока -->
+                {% if lesson.quiz %}
+                <div class="mb-4">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-question-circle"></i> {{ lesson.quiz.title }}
+                            </h5>
+                            <p class="card-text text-muted small">
+                                {{ lesson.quiz.questions.count }} вопросов • Проходной балл: {{ lesson.quiz.pass_percentage }}%
+                            </p>
+                            <a href="{% url 'quiz_take' lesson.quiz.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-pencil-square"></i> Пройти тест
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Домашнее задание -->
+                {% if lesson.assignment %}
+                <div class="mb-4">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-clipboard-check"></i> {{ lesson.assignment.title }}
+                            </h5>
+                            <p class="card-text text-muted small">
+                                Максимум баллов: {{ lesson.assignment.max_points }}
+                                {% if lesson.assignment.due_date %}
+                                • Дедлайн: {{ lesson.assignment.due_date|date:"d.m.Y H:i" }}
+                                {% endif %}
+                            </p>
+                            <a href="{% url 'assignment_submit' lesson.assignment.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-upload"></i> Отправить задание
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Обсуждение урока -->
+                <div class="mb-4 mt-5" id="comments">
+                    <h5 class="mb-4">
+                        <i class="bi bi-chat-dots"></i> Обсуждение 
+                        <span class="badge bg-secondary">{{ comments_count }}</span>
+                    </h5>
+
+                    <!-- Форма добавления комментария -->
+                    {% if can_comment %}
+                    <div class="card border-0 bg-light mb-4">
+                        <div class="card-body">
+                            <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <textarea name="content" class="form-control" rows="3" 
+                                              placeholder="Напишите ваш вопрос или комментарий..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-send"></i> Отправить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Записывайтесь на курс, чтобы участвовать в обсуждении.
+                    </div>
+                    {% endif %}
+
+                    <!-- Список комментариев -->
+                    {% if comments %}
+                    <div class="comments-list">
+                        {% for comment in comments %}
+                        <div class="card mb-3 {% if comment.is_pinned %}border-warning{% else %}border-0{% endif %} bg-light">
+                            <div class="card-body">
+                                <!-- Заголовок комментария -->
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                             style="width: 40px; height: 40px;">
+                                            {{ comment.author.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                                            {% if comment.author == course.instructor %}
+                                            <span class="badge bg-primary ms-1">Преподаватель</span>
+                                            {% endif %}
+                                            {% if comment.is_pinned %}
+                                            <span class="badge bg-warning text-dark ms-1">
+                                                <i class="bi bi-pin-fill"></i> Закреплено
+                                            </span>
+                                            {% endif %}
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ comment.created_at|date:"d.m.Y H:i" }}
+                                                {% if comment.is_edited %}
+                                                <span class="fst-italic">(изменено)</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown">
+                                        {% if comment.author == request.user or course.instructor == request.user %}
+                                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if comment.author == request.user %}
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'lesson_comment_update' comment.id %}">
+                                                    <i class="bi bi-pencil"></i> Редактировать
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' comment.id %}">
+                                                    <i class="bi bi-trash"></i> Удалить
+                                                </a>
+                                            </li>
+                                            {% if course.instructor == request.user %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="{% url 'lesson_comment_pin' comment.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="dropdown-item">
+                                                        <i class="bi bi-pin"></i> 
+                                                        {% if comment.is_pinned %}Открепить{% else %}Закрепить{% endif %}
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Текст комментария -->
+                                <p class="mb-2">{{ comment.content|linebreaks }}</p>
+
+                                <!-- Кнопка ответа -->
+                                {% if can_comment %}
+                                <button class="btn btn-sm btn-link text-muted p-0 reply-toggle" 
+                                        data-comment-id="{{ comment.id }}">
+                                    <i class="bi bi-reply"></i> Ответить
+                                </button>
+
+                                <!-- Форма ответа (скрыта по умолчанию) -->
+                                <div class="reply-form mt-2" id="reply-form-{{ comment.id }}" style="display: none;">
+                                    <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="reply_to" value="{{ comment.id }}">
+                                        <div class="mb-2">
+                                            <textarea name="content" class="form-control form-control-sm" rows="2" 
+                                                      placeholder="Написать ответ..." required></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-send"></i> Ответить
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm reply-cancel" 
+                                                data-comment-id="{{ comment.id }}">
+                                            Отмена
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+
+                                <!-- Ответы на комментарий -->
+                                {% if comment.replies.all %}
+                                <div class="replies mt-3 ps-4 border-start">
+                                    {% for reply in comment.replies.all %}
+                                    <div class="reply mb-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 30px; height: 30px; font-size: 0.75rem;">
+                                                    {{ reply.author.username|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <strong class="small">{{ reply.author.get_full_name|default:reply.author.username }}</strong>
+                                                    {% if reply.author == course.instructor %}
+                                                    <span class="badge bg-primary" style="font-size: 0.6rem;">Преподаватель</span>
+                                                    {% endif %}
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        {{ reply.created_at|date:"d.m.Y H:i" }}
+                                                        {% if reply.is_edited %}<span class="fst-italic">(изм.)</span>{% endif %}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            {% if reply.author == request.user or course.instructor == request.user %}
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    {% if reply.author == request.user %}
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'lesson_comment_update' reply.id %}">
+                                                            <i class="bi bi-pencil"></i> Редактировать
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' reply.id %}">
+                                                            <i class="bi bi-trash"></i> Удалить
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <p class="mb-0 small">{{ reply.content|linebreaks }}</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                        <p class="mt-2">Пока нет комментариев. Будьте первым!</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Навигация между уроками -->
+                <div class="d-flex justify-content-between mt-4">
+                    {% if previous_lesson %}
+                    <a href="{% url 'lesson_view' previous_lesson.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Предыдущий урок
+                    </a>
+                    {% else %}
+                    <div></div>
+                    {% endif %}
+
+                    <form method="post" action="{% url 'lesson_complete' lesson.id %}" class="d-inline">
+                        {% csrf_token %}
+                        {% if next_lesson %}
+                        <input type="hidden" name="next_lesson_id" value="{{ next_lesson.id }}">
+                        {% endif %}
+                        
+                        {% if not is_completed %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Отметить как пройденный
+                        </button>
+                        {% endif %}
+                    </form>
+
+                    {% if next_lesson %}
+                    <a href="{% url 'lesson_view' next_lesson.id %}" class="btn btn-primary">
+                        Следующий урок <i class="bi bi-arrow-right"></i>
+                    </a>
+                    {% else %}
+                    <a href="{% url 'course_detail' course.slug %}" class="btn btn-success">
+                        <i class="bi bi-trophy"></i> Завершить курс
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель - программа курса -->
+        <div class="col-lg-3 border-start bg-light" style="max-height: 100vh; overflow-y: auto;">
+            <div class="p-3">
+                <h5 class="mb-3">Программа курса</h5>
+                
+                <!-- Список разделов и уроков -->
+                {% for sect in sections %}
+                <div class="mb-3">
+                    <h6 class="text-muted">{{ sect.order }}. {{ sect.title }}</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for less in sect.lessons.all %}
+                        <li class="list-group-item {% if less.id == lesson.id %}active{% endif %} p-2">
+                            <a href="{% url 'lesson_view' less.id %}" 
+                               class="text-decoration-none {% if less.id == lesson.id %}text-white{% else %}text-dark{% endif %} d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-{% if less.lesson_type == 'video' %}play-circle{% elif less.lesson_type == 'article' %}file-text{% elif less.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
+                                    <small>{{ less.title }}</small>
+                                </div>
+                                {% if less.id == lesson.id %}
+                                <i class="bi bi-arrow-right"></i>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Переключение форм ответа на комментарии
+    document.querySelectorAll('.reply-toggle').forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.dataset.commentId;
+            const form = document.getElementById('reply-form-' + commentId);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            if (form.style.display === 'block') {
+                form.querySelector('textarea').focus();
+            }
+        });
+    });
+
+    document.querySelectorAll('.reply-cancel').forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.dataset.commentId;
+            document.getElementById('reply-form-' + commentId).style.display = 'none';
+        });
+    });
+</script>
+{% endblock %}

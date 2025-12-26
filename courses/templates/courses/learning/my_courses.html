@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои курсы - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Заголовок -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-4">Мои курсы</h1>
+                    <p class="lead text-muted">Продолжайте обучение и отслеживайте свой прогресс</p>
+                </div>
+                <a href="{% url 'my_certificates' %}" class="btn btn-outline-warning">
+                    <i class="bi bi-award me-1"></i> Мои сертификаты
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ total_courses }}</h3>
+                    <p class="mb-0 text-muted">Всего курсов</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ in_progress_courses }}</h3>
+                    <p class="mb-0 text-muted">В процессе</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ completed_courses }}</h3>
+                    <p class="mb-0 text-muted">Завершено</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">{{ avg_progress|floatformat:0 }}%</h3>
+                    <p class="mb-0 text-muted">Средний прогресс</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список курсов -->
+    {% if enrollments %}
+    <div class="row">
+        {% for enrollment in enrollments %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="row g-0">
+                    <!-- Миниатюра -->
+                    <div class="col-md-4">
+                        {% if enrollment.course.thumbnail %}
+                        <img src="{{ enrollment.course.thumbnail.url }}" class="img-fluid rounded-start h-100" alt="{{ enrollment.course.title }}" style="object-fit: cover;">
+                        {% else %}
+                        <div class="bg-secondary d-flex align-items-center justify-content-center h-100">
+                            <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Контент -->
+                    <div class="col-md-8">
+                        <div class="card-body d-flex flex-column h-100">
+                            <!-- Заголовок -->
+                            <h5 class="card-title">
+                                <a href="{% url 'course_detail' enrollment.course.slug %}" class="text-decoration-none text-dark">
+                                    {{ enrollment.course.title }}
+                                </a>
+                            </h5>
+
+                            <!-- Преподаватель -->
+                            <p class="small text-muted">
+                                <i class="bi bi-person"></i> {{ enrollment.course.instructor.get_full_name|default:enrollment.course.instructor.username }}
+                            </p>
+
+                            <!-- Прогресс -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>Прогресс</small>
+                                    <small><strong>{{ enrollment.progress_percentage|floatformat:0 }}%</strong></small>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar {% if enrollment.completed %}bg-success{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ enrollment.progress_percentage }}%" 
+                                         aria-valuenow="{{ enrollment.progress_percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Статус и дата -->
+                            <div class="mt-auto">
+                                {% if enrollment.completed %}
+                                <div class="alert alert-success py-2 mb-2">
+                                    <i class="bi bi-check-circle-fill"></i> Курс завершен {{ enrollment.completed_at|date:"d.m.Y" }}
+                                </div>
+                                    {% if enrollment.certificate %}
+                                    <a href="{% url 'certificate_detail' enrollment.certificate.certificate_number %}" 
+                                       class="btn btn-outline-warning btn-sm w-100 mb-2">
+                                        <i class="bi bi-award me-1"></i> Сертификат
+                                    </a>
+                                    {% endif %}
+                                {% else %}
+                                <small class="text-muted d-block mb-2">
+                                    Начат {{ enrollment.enrolled_at|date:"d.m.Y" }}
+                                </small>
+                                {% endif %}
+
+                                <!-- Кнопка -->
+                                <a href="{% url 'course_detail' enrollment.course.slug %}" class="btn btn-primary w-100">
+                                    <i class="bi bi-play-circle"></i> 
+                                    {% if enrollment.completed %}
+                                        Повторить курс
+                                    {% else %}
+                                        Продолжить обучение
+                                    {% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Пагинация -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Навигация по страницам">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Назад</a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Вперед</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- Пустое состояние -->
+    <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 5rem; color: #ccc;"></i>
+        <h3 class="mt-3">У вас пока нет курсов</h3>
+        <p class="text-muted">Начните обучение, выбрав курс из каталога</p>
+        <a href="{% url 'course_list' %}" class="btn btn-primary">
+            <i class="bi bi-search"></i> Найти курс
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

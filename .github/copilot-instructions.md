@@ -53,22 +53,44 @@ CourseMaster/
 │   ├── asgi.py
 │   └── wsgi.py
 ├── courses/                   # АКТИВНОЕ приложение
-│   ├── models.py              # 211 строк (все модели курсов)
-│   ├── views.py               # Views (нужно реализовать)
+│   ├── models.py              # 650+ строк (все модели курсов + платежи)
+│   ├── views.py               # 1800+ строк (все views)
 │   ├── admin.py               # Django Admin
-│   ├── urls.py
-│   ├── forms.py
+│   ├── urls.py                # 85+ URL patterns
+│   ├── forms.py               # 20+ форм
 │   ├── migrations/
-│   └── __init__.py
+│   └── templates/
+│       └── courses/           # Шаблоны курсов
+│           ├── catalog/       # Каталог курсов
+│           ├── learning/      # Обучение студента
+│           ├── assignments/   # Домашние задания
+│           ├── certificates/  # Сертификаты
+│           ├── reviews/       # Отзывы
+│           ├── comments/      # Комментарии
+│           ├── payments/      # Платежи
+│           └── instructor/    # Панель преподавателя
 ├── profiles/                  # Приложение профилей
 │   ├── models.py
 │   ├── views.py
 │   ├── forms.py
 │   ├── urls.py
 │   ├── admin.py
-│   ├── migrations/
-│   └── __init__.py
-├── templates/                 # Django шаблоны
+│   └── migrations/
+├── templates/                 # Общие шаблоны (корневые)
+│   ├── base.html              # Базовый шаблон
+│   ├── home.html              # Главная страница
+│   ├── registration/          # Аутентификация
+│   └── profiles/              # Профили пользователей
+├── static/                    # Статические файлы
+│   ├── css/
+│   │   ├── base.css           # Общие стили
+│   │   ├── courses.css        # Стили курсов
+│   │   ├── instructor.css     # Стили панели преподавателя
+│   │   └── home.css           # Стили главной страницы
+│   ├── js/
+│   │   ├── main.js            # Общие скрипты
+│   │   └── courses.js         # Скрипты курсов
+│   └── images/                # Изображения
 ├── docs/                      # Документация
 │   ├── ANALYSIS/
 │   ├── DECISIONS/
@@ -92,6 +114,47 @@ CourseMaster/
 - `Enrollment` - запись студента на курс с прогрессом
 - `LessonProgress` - отслеживание прогресса студента
 - `Review` - отзывы и рейтинги курсов
+- `Quiz`, `Question`, `QuestionChoice` - система тестирования
+- `Assignment`, `AssignmentSubmission` - домашние задания
+- `Certificate` - сертификаты
+- `LessonComment` - комментарии к урокам
+- `PaymentMethod`, `Purchase`, `Payment`, `PromoCode`, `Refund` - система платежей
+
+### Статические файлы (static/)
+
+**CSS Файлы:**
+- `static/css/base.css` - Общие стили (reset, header, nav, buttons, messages, forms, grid)
+- `static/css/courses.css` - Стили для курсов (course cards, lesson view, quiz, comments)
+- `static/css/instructor.css` - Стили панели преподавателя (dashboard, course builder, grading)
+- `static/css/home.css` - Стили главной страницы (hero, features, testimonials, CTA)
+
+**JavaScript Файлы:**
+- `static/js/main.js` - Общие скрипты (автозакрытие сообщений, подтверждения, AJAX helper)
+- `static/js/courses.js` - Скрипты курсов (video player, quiz timer, accordion, comments)
+
+**Правила подключения:**
+```django
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/имя_файла.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/имя_файла.js' %}"></script>
+{% endblock %}
+```
+
+**❌ ЗАПРЕЩЕНО:**
+- Использовать inline CSS в шаблонах (внутри `<style>` тегов)
+- Использовать inline JavaScript в шаблонах (кроме небольших обработчиков событий)
+- Дублировать стили между файлами
+
+**✅ ПРАВИЛЬНО:**
+- Все стили в отдельных CSS файлах
+- Все скрипты в отдельных JS файлах
+- Использовать {% load static %} в начале каждого шаблона, использующего статику
+- Наследовать от base.html и переопределять блоки extra_css/extra_js
 
 ---
 
@@ -269,10 +332,125 @@ C:\Users\igor_\Dev\CourseMaster\.venv\Scripts\pip.exe install имя_пакет�
 - **Views**: [courses/views.py](../courses/views.py)
 - **Admin**: [courses/admin.py](../courses/admin.py)
 - **Settings**: [coursemaster/settings.py](../coursemaster/settings.py)
+- **Статика**: [static/](../static/) - CSS и JS файлы
+
+---
+
+## � Организация статических файлов (Рефакторинг 27.12.2025)
+
+### Новая структура static/
+```
+static/
+├── css/
+│   ├── base.css           # Общие стили (header, nav, buttons, messages, forms)
+│   ├── courses.css        # Курсы, уроки, квизы, комментарии
+│   ├── instructor.css     # Панель преподавателя, management
+│   └── home.css           # Главная страница (hero, features, testimonials, CTA)
+│
+├── js/
+│   ├── main.js            # Общие функции (автозакрытие сообщений, AJAX)
+│   └── courses.js         # Видеоплеер, квиз-таймер, аккордеон
+│
+└── images/                # Изображения и иконки
+```
+
+### Ключевые принципы:
+- **❌ ЗАПРЕЩЕНО**: Inline CSS в шаблонах (`<style>` теги)
+- **❌ ЗАПРЕЩЕНО**: Inline JS (кроме small handlers)
+- **✅ ПРАВИЛЬНО**: Все стили в `static/css/`
+- **✅ ПРАВИЛЬНО**: Все скрипты в `static/js/`
+
+### Подключение в шаблонах
+```django
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/courses.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/courses.js' %}"></script>
+{% endblock %}
+```
+
+---
+
+### Структура проекта (краткая)
+```
+CourseMaster/
+├── templates/          # Общие шаблоны (base.html, home.html, registration/, profiles/)
+├── courses/            # Главное приложение (models, views, forms, admin, templates/courses/)
+├── profiles/           # Профили пользователей (аутентификация)
+├── static/             # CSS (base, courses, instructor, home) + JS (main, courses)
+├── docs/               # Документация (CHANGELOG, ANALYSIS, DECISIONS)
+├── coursemaster/       # Django config (settings.py, urls.py)
+└── manage.py           # Django CLI
+```
+
+### Ключевая информация
+- **Виртуальное окружение**: `C:\Users\igor_\Dev\CourseMaster\.venv\`
+- **Python команды**: ВСЕГДА полный путь `.venv\Scripts\python.exe`
+- **База данных**: SQLite3 в корне (`db.sqlite3`)
+- **Активные приложения**: `courses`, `profiles`
+- **Миграции**: Последняя - 0008 (payment models)
+
+### Модели (23 всего)
+- **Core (7)**: Category, Course, Section, Lesson, Enrollment, LessonProgress, Review
+- **Quiz (5)**: Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer
+- **Assignments (2)**: Assignment, AssignmentSubmission
+- **Other (4)**: Certificate, LessonComment, PromoCode, Refund
+- **Payments (5)**: PaymentMethod, Purchase, Payment, PromoCode, Refund
+
+### Статические файлы
+- **CSS**: `base.css` (общие), `courses.css` (курсы), `instructor.css` (преподаватели), `home.css` (главная)
+- **JS**: `main.js` (общие скрипты), `courses.js` (курсовые скрипты)
+- **Подключение**: `{% load static %}` + `{% static 'css/file.css' %}`
+- **Правило**: Все стили в CSS файлах, ВСЕ в static/, никаких inline
+
+### Шаблоны (организация)
+```
+templates/
+├── base.html                    # Базовый шаблон со {% load static %}
+├── home.html                    # Главная страница
+├── registration/                # login, register, password_reset
+└── profiles/                    # profile, profile_edit
+
+courses/templates/courses/
+├── catalog/                     # course_list, course_detail
+├── learning/                    # my_courses, lesson_view, quiz
+├── assignments/                 # assignment_submit
+├── certificates/                # my_certificates, certificate_detail
+├── reviews/                     # review_form, course_reviews
+├── comments/                    # comment_form
+├── payments/                    # checkout, stripe_payment, etc.
+└── instructor/                  # course_list, course_detail, forms
+```
+
+### Команды (примеры)
+```bash
+# Сервер
+C:\Users\igor_\Dev\CourseMaster\.venv\Scripts\python.exe manage.py runserver
+
+# Миграции
+C:\Users\igor_\Dev\CourseMaster\.venv\Scripts\python.exe manage.py makemigrations
+C:\Users\igor_\Dev\CourseMaster\.venv\Scripts\python.exe manage.py migrate
+
+# Проверка
+C:\Users\igor_\Dev\CourseMaster\.venv\Scripts\python.exe manage.py check
+```
+
+### Правила работы
+1. ✅ Работаем по ROADMAP.md без согласований (если задача в плане)
+2. ❌ Изменения в ROADMAP.md требуют согласования
+3. ✅ Все стили в CSS файлах (никаких inline стилей)
+4. ✅ Все скрипты в JS файлах
+5. ✅ Шаблоны наследуют от base.html
+6. ✅ Документируем изменения в /docs/CHANGELOG/
+7. ✅ Обновляем PROJECT_STATUS.md после завершения фичи
 
 ---
 
 **Создано:** 26 декабря 2025  
-**Версия:** 2.0  
+**Версия:** 3.0  
 **Статус:** Единый источник правды для AI агентов  
-**Изменения в v2.0:** Объединены инструкции, удалена папка backend/, очищена структура
+**Изменения в v3.0:** Добавлена структура static/, обновлены шаблоны, быстрая справка

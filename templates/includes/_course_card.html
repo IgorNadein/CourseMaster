@@ -1,0 +1,122 @@
+<!-- Course Card Component -->
+<!-- Usage: {% include 'includes/_course_card.html' with course=course %} -->
+<div class="course-card">
+    <style>
+        .course-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .course-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        .course-card-thumbnail {
+            width: 100%;
+            height: 160px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .course-card-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .course-card-thumbnail .placeholder {
+            font-size: 48px;
+        }
+        .course-card-body {
+            padding: 15px;
+        }
+        .course-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .course-card-title a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .course-card-title a:hover {
+            color: #5624d0;
+        }
+        .course-card-instructor {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .course-card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .course-card-rating {
+            color: #f4c150;
+            font-size: 14px;
+        }
+        .course-card-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+        .course-card-price.free {
+            color: #28a745;
+        }
+        .course-card-level {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+    </style>
+    
+    <div class="course-card-thumbnail">
+        {% if course.thumbnail %}
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}">
+        {% else %}
+            <span class="placeholder">📚</span>
+        {% endif %}
+    </div>
+    
+    <div class="course-card-body">
+        <h3 class="course-card-title">
+            <a href="{% url 'course_detail' slug=course.slug %}">{{ course.title }}</a>
+        </h3>
+        
+        <div class="course-card-instructor">
+            {{ course.instructor.get_full_name|default:course.instructor.username }}
+        </div>
+        
+        <div class="course-card-rating">
+            {% for i in "12345" %}
+                {% if forloop.counter <= course.average_rating|floatformat:0|default:0 %}★{% else %}☆{% endif %}
+            {% endfor %}
+            <span style="color: #666; font-size: 12px;">({{ course.total_reviews }})</span>
+        </div>
+        
+        <div class="course-card-meta">
+            <span class="course-card-level">{{ course.get_level_display }}</span>
+            <span class="course-card-price {% if course.is_free %}free{% endif %}">
+                {% if course.is_free %}
+                    Бесплатно
+                {% else %}
+                    {{ course.current_price }} ₽
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</div>
