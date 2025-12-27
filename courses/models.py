@@ -35,15 +35,15 @@ class Category(models.Model):
 
 class Course(models.Model):
     LEVEL_CHOICES = [
-        ('beginner', 'Beginner'),
-        ('intermediate', 'Intermediate'),
-        ('advanced', 'Advanced'),
+        ('beginner', 'Начинающий'),
+        ('intermediate', 'Средний'),
+        ('advanced', 'Продвинутый'),
     ]
     
     STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('published', 'Published'),
-        ('archived', 'Archived'),
+        ('draft', 'Черновик'),
+        ('published', 'Опубликован'),
+        ('archived', 'Архив'),
     ]
     
     # Basic Information
@@ -147,10 +147,10 @@ class Section(models.Model):
 
 class Lesson(models.Model):
     LESSON_TYPE_CHOICES = [
-        ('video', 'Video'),
-        ('article', 'Article'),
-        ('quiz', 'Quiz'),
-        ('assignment', 'Assignment'),
+        ('video', 'Видео'),
+        ('article', 'Статья'),
+        ('quiz', 'Тест'),
+        ('assignment', 'Задание'),
     ]
     
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='lessons')
@@ -239,11 +239,11 @@ class Quiz(models.Model):
     lesson = models.OneToOneField(Lesson, on_delete=models.CASCADE, related_name='quiz')
     title = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
-    pass_percentage = models.PositiveIntegerField(default=50, help_text="Minimum % to pass")
-    time_limit_minutes = models.PositiveIntegerField(null=True, blank=True, help_text="Quiz time limit in minutes")
-    attempts_limit = models.PositiveIntegerField(default=3, help_text="Maximum attempts allowed")
+    pass_percentage = models.PositiveIntegerField(default=50, help_text="Минимальный % для прохождения")
+    time_limit_minutes = models.PositiveIntegerField(null=True, blank=True, help_text="Лимит времени на тест в минутах")
+    attempts_limit = models.PositiveIntegerField(default=3, help_text="Максимальное количество попыток")
     shuffle_questions = models.BooleanField(default=False)
-    show_answers = models.BooleanField(default=True, help_text="Show correct answers after completion")
+    show_answers = models.BooleanField(default=True, help_text="Показывать правильные ответы после завершения")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -256,18 +256,18 @@ class Quiz(models.Model):
 
 class Question(models.Model):
     QUESTION_TYPE_CHOICES = [
-        ('multiple', 'Multiple Choice'),
-        ('single', 'Single Choice'),
-        ('true_false', 'True/False'),
-        ('text', 'Short Answer'),
+        ('multiple', 'Множественный выбор'),
+        ('single', 'Одиночный выбор'),
+        ('true_false', 'Правда/Ложь'),
+        ('text', 'Текстовый ответ'),
     ]
     
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
     type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES, default='single')
     text = models.TextField()
     order = models.PositiveIntegerField(default=0)
-    points = models.PositiveIntegerField(default=1, help_text="Points for correct answer")
-    explanation = models.TextField(blank=True, help_text="Explanation shown after answer")
+    points = models.PositiveIntegerField(default=1, help_text="Баллы за правильный ответ")
+    explanation = models.TextField(blank=True, help_text="Объяснение, показываемое после ответа")
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -292,6 +292,17 @@ class QuestionChoice(models.Model):
     
     def __str__(self):
         return f"{self.question.text[:30]} - {self.text[:30]}"
+    
+    def save(self, *args, **kwargs):
+        """
+        Для вопросов с одиночным выбором (single/true_false):
+        если установить is_correct=True, автоматически снимаем флаг с других вариантов
+        """
+        if self.is_correct and self.question.type in ['single', 'true_false']:
+            # Снять is_correct со всех остальных вариантов этого вопроса
+            self.question.choices.exclude(pk=self.pk).update(is_correct=False)
+        
+        super().save(*args, **kwargs)
 
 
 class QuizAttempt(models.Model):
@@ -357,9 +368,9 @@ class AssignmentSubmission(models.Model):
     Отправка домашнего задания студентом
     """
     STATUS_CHOICES = [
-        ('submitted', 'Submitted'),
-        ('graded', 'Graded'),
-        ('returned', 'Returned for revision'),
+        ('submitted', 'Отправлено'),
+        ('graded', 'Оценено'),
+        ('returned', 'Возвращено на доработку'),
     ]
     
     assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
