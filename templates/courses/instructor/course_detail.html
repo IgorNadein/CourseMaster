@@ -51,7 +51,7 @@
             <div class="card text-center">
                 <div class="card-body">
                     <h3 class="text-primary">{{ total_sections }}</h3>
-                    <p class="mb-0 text-muted">Разделов</p>
+                    <p class="mb-0 text-muted">Модулей</p>
                 </div>
             </div>
         </div>
@@ -177,7 +177,7 @@
                     </li>
                     {% empty %}
                     <li class="list-group-item text-muted">
-                        <i class="bi bi-info-circle"></i> Пока нет уроков в этом разделе
+                        <i class="bi bi-info-circle"></i> Пока нет уроков в этом модуле
                     </li>
                     {% endfor %}
                 </ul>
@@ -186,7 +186,7 @@
             {% else %}
             <div class="text-center py-4">
                 <i class="bi bi-folder" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-2 text-muted">Пока нет разделов. Добавьте первый раздел курса в конструкторе.</p>
+                <p class="mt-2 text-muted">Пока нет модулей. Добавьте первый модуль курса в конструкторе.</p>
                 <a href="{% url 'course_builder' course.slug %}" class="btn btn-primary">
                     <i class="bi bi-tools"></i> Открыть конструктор курса
                 </a>

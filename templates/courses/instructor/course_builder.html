@@ -72,7 +72,7 @@
                 <div class="stats-grid">
                     <div class="stat-item">
                         <span class="stat-value" id="statSections">{{ sections|length }}</span>
-                        <span class="stat-label">Разделов</span>
+                        <span class="stat-label">Модулей</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-value" id="statLessons">{{ total_lessons }}</span>
@@ -103,7 +103,7 @@
                 </div>
             </div>
 
-            <!-- Навигация по разделам -->
+            <!-- Навигация по модулям -->
             <div class="sidebar-section">
                 <h6 class="sidebar-title">
                     <i class="bi bi-list-nested"></i> Структура
@@ -116,7 +116,7 @@
                         <span class="nav-badge">{{ section.lessons.count }}</span>
                     </a>
                     {% empty %}
-                    <p class="text-muted small px-3">Нет разделов</p>
+                    <p class="text-muted small px-3">Нет модулей</p>
                     {% endfor %}
                 </nav>
             </div>
@@ -124,11 +124,11 @@
 
         <!-- Основной контент -->
         <main class="builder-main">
-            <!-- Контейнер разделов -->
+            <!-- Контейнер модулей -->
             <div class="sections-container" id="sectionsContainer">
                 {% for section in sections %}
                 <div class="section-card" id="section-{{ section.id }}" data-section-id="{{ section.id }}">
-                    <!-- Заголовок раздела -->
+                    <!-- Заголовок модуля -->
                     <div class="section-header">
                         <div class="section-drag-handle">
                             <i class="bi bi-grip-vertical"></i>
@@ -137,7 +137,7 @@
                         <input type="text" 
                                class="section-title-input" 
                                value="{{ section.title }}"
-                               placeholder="Название раздела"
+                               placeholder="Название модуля"
                                onchange="updateSection({{ section.id }}, 'title', this.value)">
                         <div class="section-actions">
                             <button type="button" class="btn btn-sm btn-link" onclick="toggleSectionCollapse({{ section.id }})">
@@ -149,7 +149,7 @@
                         </div>
                     </div>
 
-                    <!-- Контент раздела (уроки) -->
+                    <!-- Контент модуля (уроки) -->
                     <div class="section-content" id="sectionContent-{{ section.id }}">
                         <!-- Список уроков -->
                         <div class="lessons-list" id="lessonsList-{{ section.id }}">
@@ -265,11 +265,11 @@
                 {% endfor %}
             </div>
 
-            <!-- Кнопка добавления раздела -->
+            <!-- Кнопка добавления модуля -->
             <div class="add-section-container">
                 <button type="button" class="add-section-btn" onclick="addSection()">
                     <i class="bi bi-plus-lg"></i>
-                    <span>Добавить раздел</span>
+                    <span>Добавить модуль</span>
                 </button>
             </div>
 
@@ -634,23 +634,23 @@ async function apiRequest(url, method, data = null) {
 }
 
 // ============================================================
-// РАЗДЕЛЫ
+// МОДУЛИ
 // ============================================================
 
-// Добавить раздел
+// Добавить модуль
 async function addSection() {
     const result = await apiRequest(`/courses/api/course/${COURSE_ID}/section/create/`, 'POST', {
-        title: 'Новый раздел'
+        title: 'Новый модуль'
     });
     
     if (result.success) {
         location.reload();
     } else {
-        alert('Ошибка: ' + (result.error || 'Не удалось создать раздел'));
+        alert('Ошибка: ' + (result.error || 'Не удалось создать модуль'));
     }
 }
 
-// Обновить раздел
+// Обновить модуль
 let sectionSaveTimeout;
 function updateSection(sectionId, field, value) {
     clearTimeout(sectionSaveTimeout);
@@ -661,9 +661,9 @@ function updateSection(sectionId, field, value) {
     }, 500);
 }
 
-// Удалить раздел
+// Удалить модуль
 async function deleteSection(sectionId) {
-    if (!confirm('Удалить раздел и все его уроки? Это действие необратимо.')) {
+    if (!confirm('Удалить модуль и все его уроки? Это действие необратимо.')) {
         return;
     }
     
@@ -673,11 +673,11 @@ async function deleteSection(sectionId) {
         document.getElementById(`section-${sectionId}`).remove();
         updateStats();
     } else {
-        alert('Ошибка: ' + (result.error || 'Не удалось удалить раздел'));
+        alert('Ошибка: ' + (result.error || 'Не удалось удалить модуль'));
     }
 }
 
-// Свернуть/развернуть раздел
+// Свернуть/развернуть модуль
 function toggleSectionCollapse(sectionId) {
     const content = document.getElementById(`sectionContent-${sectionId}`);
     const btn = event.currentTarget;
