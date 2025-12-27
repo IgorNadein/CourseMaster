@@ -178,7 +178,7 @@
 
                 <!-- Кнопки -->
                 <div class="d-flex justify-content-between mb-4">
-                    <a href="{% if object %}{% url 'instructor_course_detail' object.slug %}{% else %}{% url 'instructor_courses' %}{% endif %}" class="btn btn-secondary">
+                    <a href="{% url 'instructor_courses' %}" class="btn btn-secondary">
                         Отмена
                     </a>
                     <button type="submit" class="btn btn-primary">

@@ -1,0 +1,618 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Конструктор теста - {{ course.title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/instructor.css' %}">
+<style>
+    .quiz-builder {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .question-card {
+        margin-bottom: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .question-card:hover {
+        border-color: #4285f4;
+        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.15);
+    }
+    
+    .question-card.selected {
+        border-color: #4285f4;
+        box-shadow: 0 4px 16px rgba(66, 133, 244, 0.25);
+    }
+    
+    .question-header {
+        padding: 20px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #fafafa;
+        border-radius: 10px 10px 0 0;
+    }
+    
+    .question-body {
+        padding: 24px;
+    }
+    
+    .choice-item {
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .choice-item:hover {
+        background: #f8f9fa;
+        border-color: #4285f4;
+    }
+    
+    .choice-item.correct {
+        background: #e8f5e9;
+        border-color: #4caf50;
+    }
+    
+    .choice-input {
+        border: none;
+        background: transparent;
+        flex: 1;
+        font-size: 15px;
+    }
+    
+    .choice-input:focus {
+        outline: none;
+    }
+    
+    .add-choice-btn {
+        color: #666;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .add-choice-btn:hover {
+        background: #f0f0f0;
+        color: #333;
+    }
+    
+    .question-number {
+        width: 40px;
+        height: 40px;
+        background: #4285f4;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+    }
+    
+    .action-btn {
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        color: #666;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        background: #f0f0f0;
+        color: #333;
+    }
+    
+    .add-question-floating {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: #4285f4;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+        cursor: pointer;
+        transition: all 0.3s;
+        border: none;
+        font-size: 24px;
+    }
+    
+    .add-question-floating:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 20px rgba(66, 133, 244, 0.5);
+    }
+    
+    .quiz-settings-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 2px solid #e0e0e0;
+    }
+    
+    .type-selector {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .type-btn {
+        padding: 8px 16px;
+        border: 1px solid #e0e0e0;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+    }
+    
+    .type-btn:hover {
+        border-color: #4285f4;
+        background: #f0f7ff;
+    }
+    
+    .type-btn.active {
+        background: #4285f4;
+        color: white;
+        border-color: #4285f4;
+    }
+    
+    .save-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: #4caf50;
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .save-indicator.show {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="quiz-builder py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-pencil-square me-2"></i>
+                <span contenteditable="true" class="quiz-title-edit" data-quiz-id="{{ quiz.id }}">{{ quiz.title|default:"Новый тест" }}</span>
+            </h2>
+            <p class="text-muted mb-0">
+                <a href="{% url 'instructor_course_detail' course.slug %}">{{ course.title }}</a> 
+                / {{ lesson.title }}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'instructor_course_detail' course.slug %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Назад к курсу
+            </a>
+        </div>
+    </div>
+
+    <!-- Quiz Settings Panel -->
+    <div class="quiz-settings-panel">
+        <h5 class="mb-3">
+            <i class="bi bi-gear me-2"></i>Настройки теста
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Проходной балл (%)</label>
+                <input type="number" class="form-control" value="{{ quiz.pass_percentage }}" 
+                       min="0" max="100" data-field="pass_percentage">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Максимум попыток</label>
+                <input type="number" class="form-control" value="{{ quiz.attempts_limit }}" 
+                       min="1" data-field="attempts_limit">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Время (минуты)</label>
+                <input type="number" class="form-control" value="{{ quiz.time_limit_minutes|default:'' }}" 
+                       placeholder="Без ограничений" data-field="time_limit_minutes">
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" {% if quiz.shuffle_questions %}checked{% endif %} 
+                           data-field="shuffle_questions">
+                    <label class="form-check-label">Перемешивать вопросы</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" {% if quiz.show_answers %}checked{% endif %} 
+                           data-field="show_answers">
+                    <label class="form-check-label">Показывать правильные ответы</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Questions List -->
+    <div id="questions-container">
+        {% for question in questions %}
+        <div class="question-card" data-question-id="{{ question.id }}">
+            <div class="question-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="question-number">{{ forloop.counter }}</div>
+                    <div class="flex-grow-1">
+                        <input type="text" class="form-control border-0 fs-5 fw-medium" 
+                               value="{{ question.text }}" 
+                               placeholder="Текст вопроса"
+                               data-field="text">
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="action-btn" onclick="duplicateQuestion({{ question.id }})" title="Дублировать">
+                        <i class="bi bi-files"></i>
+                    </button>
+                    <button class="action-btn text-danger" onclick="deleteQuestion({{ question.id }})" title="Удалить">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="question-body">
+                <!-- Type Selector -->
+                <div class="type-selector mb-3">
+                    <button class="type-btn {% if question.type == 'single' %}active{% endif %}" 
+                            onclick="changeQuestionType({{ question.id }}, 'single')">
+                        <i class="bi bi-circle me-1"></i>Одиночный выбор
+                    </button>
+                    <button class="type-btn {% if question.type == 'multiple' %}active{% endif %}"
+                            onclick="changeQuestionType({{ question.id }}, 'multiple')">
+                        <i class="bi bi-check2-square me-1"></i>Множественный выбор
+                    </button>
+                    <button class="type-btn {% if question.type == 'text' %}active{% endif %}"
+                            onclick="changeQuestionType({{ question.id }}, 'text')">
+                        <i class="bi bi-text-left me-1"></i>Текстовый ответ
+                    </button>
+                </div>
+
+                <!-- Choices (only for single/multiple) -->
+                {% if question.type != 'text' %}
+                <div class="choices-list mb-3" data-question-id="{{ question.id }}">
+                    {% for choice in question.choices.all %}
+                    <div class="choice-item {% if choice.is_correct %}correct{% endif %}" data-choice-id="{{ choice.id }}">
+                        <input type="{% if question.type == 'single' %}radio{% else %}checkbox{% endif %}" 
+                               name="correct_{{ question.id }}" 
+                               {% if choice.is_correct %}checked{% endif %}
+                               onchange="toggleCorrect({{ choice.id }})">
+                        <input type="text" class="choice-input" 
+                               value="{{ choice.text }}" 
+                               placeholder="Вариант ответа"
+                               onchange="updateChoice({{ choice.id }}, this.value)">
+                        <button class="btn-sm btn-link text-danger" onclick="deleteChoice({{ choice.id }})">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                    <a href="#" class="add-choice-btn" onclick="addChoice({{ question.id }}); return false;">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Добавить вариант</span>
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Points and Explanation -->
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small text-muted">Баллы</label>
+                        <input type="number" class="form-control form-control-sm" 
+                               value="{{ question.points }}" 
+                               min="1"
+                               data-question-id="{{ question.id }}"
+                               data-field="points">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label small text-muted">Объяснение (опционально)</label>
+                        <textarea class="form-control form-control-sm" 
+                                  rows="2" 
+                                  placeholder="Показывается после ответа"
+                                  data-question-id="{{ question.id }}"
+                                  data-field="explanation">{{ question.explanation }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">Вопросов пока нет</h4>
+            <p class="text-muted">Нажмите кнопку + чтобы добавить первый вопрос</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add Question Floating Button -->
+    <button class="add-question-floating" onclick="addQuestion()" title="Добавить вопрос">
+        <i class="bi bi-plus"></i>
+    </button>
+
+    <!-- Save Indicator -->
+    <div class="save-indicator" id="saveIndicator">
+        <i class="bi bi-check-circle me-2"></i>Сохранено
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let saveTimeout;
+const QUIZ_ID = {{ quiz.id }};
+
+// Auto-save функция
+function autoSave(endpoint, data) {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSaveIndicator();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }, 1000);
+}
+
+function showSaveIndicator() {
+    const indicator = document.getElementById('saveIndicator');
+    indicator.classList.add('show');
+    setTimeout(() => {
+        indicator.classList.remove('show');
+    }, 2000);
+}
+
+// Изменение названия теста
+document.querySelector('.quiz-title-edit').addEventListener('input', function(e) {
+    autoSave(`/courses/api/quiz/${QUIZ_ID}/update/`, {
+        title: e.target.textContent
+    });
+});
+
+// Обновление настроек теста
+document.querySelectorAll('.quiz-settings-panel input').forEach(input => {
+    input.addEventListener('change', function() {
+        const field = this.dataset.field;
+        let value = this.type === 'checkbox' ? this.checked : this.value;
+        
+        autoSave(`/courses/api/quiz/${QUIZ_ID}/update/`, {
+            [field]: value
+        });
+    });
+});
+
+// Обновление текста вопроса
+document.querySelectorAll('[data-question-id][data-field="text"]').forEach(input => {
+    input.addEventListener('input', function() {
+        const questionId = this.closest('.question-card').dataset.questionId;
+        autoSave(`/courses/api/question/${questionId}/update/`, {
+            text: this.value
+        });
+    });
+});
+
+// Обновление баллов и объяснения
+document.querySelectorAll('[data-question-id][data-field]').forEach(input => {
+    if (input.dataset.field !== 'text') {
+        input.addEventListener('change', function() {
+            const questionId = this.dataset.questionId;
+            const field = this.dataset.field;
+            autoSave(`/courses/api/question/${questionId}/update/`, {
+                [field]: this.value
+            });
+        });
+    }
+});
+
+// Добавить новый вопрос
+function addQuestion() {
+    fetch(`/courses/api/quiz/${QUIZ_ID}/question/create/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            text: 'Новый вопрос',
+            type: 'single',
+            points: 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Изменить тип вопроса
+function changeQuestionType(questionId, type) {
+    fetch(`/courses/api/question/${questionId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ type: type })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Добавить вариант ответа
+function addChoice(questionId) {
+    fetch(`/courses/api/question/${questionId}/choice/create/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            text: '',
+            is_correct: false
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Обновить вариант ответа
+function updateChoice(choiceId, text) {
+    autoSave(`/courses/api/choice/${choiceId}/update/`, {
+        text: text
+    });
+}
+
+// Переключить правильность ответа
+function toggleCorrect(choiceId) {
+    const checkbox = event.target;
+    const choiceItem = checkbox.closest('.choice-item');
+    
+    // Обновить правильность ответа напрямую (без debounce!)
+    // Логика single-choice обрабатывается на бэкенде в модели QuestionChoice.save()
+    fetch(`/courses/api/choice/${choiceId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            is_correct: checkbox.checked
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Для single-choice: обновить UI, перезагрузив страницу
+            // чтобы отобразить правильное состояние всех вариантов
+            const isSingleChoice = checkbox.type === 'radio';
+            if (isSingleChoice && checkbox.checked) {
+                location.reload();
+            } else {
+                // Визуально обновить текущий элемент
+                if (checkbox.checked) {
+                    choiceItem.classList.add('correct');
+                } else {
+                    choiceItem.classList.remove('correct');
+                }
+                showSaveIndicator();
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Удалить вариант ответа
+function deleteChoice(choiceId) {
+    if (confirm('Удалить этот вариант ответа?')) {
+        fetch(`/courses/api/choice/${choiceId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+
+// Дублировать вопрос
+function duplicateQuestion(questionId) {
+    fetch(`/courses/api/question/${questionId}/duplicate/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Удалить вопрос
+function deleteQuestion(questionId) {
+    if (confirm('Удалить этот вопрос и все варианты ответов?')) {
+        fetch(`/courses/api/question/${questionId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+
+// Получить CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

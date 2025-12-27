@@ -1,4 +1,4 @@
-{% extends "profiles/base.html" %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Создать домашнее задание - CourseMaster{% endblock %}
@@ -11,7 +11,7 @@
             <div class="mb-4">
                 <p class="text-muted">
                     <a href="{% url 'instructor_course_detail' course.slug %}">{{ course.title }}</a> / 
-                    <a href="{% url 'lesson_update' lesson.id %}">{{ lesson.title }}</a>
+                    <a href="{% url 'course_builder' course.slug %}">{{ lesson.title }}</a>
                 </p>
             </div>
 

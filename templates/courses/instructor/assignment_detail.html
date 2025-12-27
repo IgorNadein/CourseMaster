@@ -1,4 +1,4 @@
-{% extends "profiles/base.html" %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Управление заданием - CourseMaster{% endblock %}
@@ -15,8 +15,8 @@
                     <p class="text-muted mb-0">Курс: <strong>{{ course.title }}</strong></p>
                 </div>
                 <div>
-                    <a href="{% url 'lesson_update' lesson.id %}" class="btn btn-outline-primary">
-                        <i class="bi bi-pencil"></i> Редактировать урок
+                    <a href="{% url 'course_builder' course.slug %}" class="btn btn-outline-primary">
+                        <i class="bi bi-tools"></i> Открыть конструктор
                     </a>
                 </div>
             </div>

@@ -27,7 +27,11 @@
             </form>
             {% endif %}
             
-            <a href="{% url 'course_update' course.slug %}" class="btn btn-primary">
+            <a href="{% url 'course_builder' course.slug %}" class="btn btn-primary">
+                <i class="bi bi-tools"></i> Конструктор курса
+            </a>
+            
+            <a href="{% url 'course_update' course.slug %}" class="btn btn-outline-primary">
                 <i class="bi bi-pencil"></i> Редактировать
             </a>
             
@@ -91,8 +95,8 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Программа курса</h5>
-            <a href="{% url 'section_create' course.slug %}" class="btn btn-sm btn-primary">
-                <i class="bi bi-plus"></i> Добавить раздел
+            <a href="{% url 'course_builder' course.slug %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-tools"></i> Открыть конструктор
             </a>
         </div>
         <div class="card-body">
@@ -101,42 +105,16 @@
             <div class="border rounded p-3 mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5>{{ section.order }}. {{ section.title }}</h5>
-                    <div>
-                        <!-- Dropdown для добавления контента -->
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-plus"></i> Добавить контент
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'lesson_create' section.id %}?type=video">
-                                    <i class="bi bi-play-circle text-primary"></i> Видео-урок
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'lesson_create' section.id %}?type=article">
-                                    <i class="bi bi-file-text text-info"></i> Статья/Текст
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'lesson_create' section.id %}?type=quiz">
-                                    <i class="bi bi-question-circle text-warning"></i> Тест/Quiz
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'lesson_create' section.id %}?type=assignment">
-                                    <i class="bi bi-clipboard-check text-success"></i> Домашнее задание
-                                </a></li>
-                            </ul>
-                        </div>
-                        <a href="{% url 'section_update' section.id %}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <a href="{% url 'section_delete' section.id %}" class="btn btn-sm btn-outline-danger">
-                            <i class="bi bi-trash"></i>
-                        </a>
-                    </div>
+                    <a href="{% url 'course_builder' course.slug %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Редактировать в конструкторе
+                    </a>
                 </div>
                 
                 {% if section.description %}
                 <p class="text-muted small">{{ section.description }}</p>
                 {% endif %}
                 
-                <!-- Уроки -->
+                <!-- Уроки (только просмотр) -->
                 <ul class="list-group mt-2">
                     {% for lesson in section.lessons.all %}
                     <li class="list-group-item">
@@ -157,10 +135,11 @@
                                     {% if lesson.quiz %}
                                     <small class="text-success d-block ms-4 mt-1">
                                         <i class="bi bi-check-circle"></i> Тест: {{ lesson.quiz.questions.count }} вопросов, проходной балл {{ lesson.quiz.pass_percentage }}%
+                                        <a href="{% url 'quiz_builder' lesson.quiz.id %}" class="ms-2">Редактировать тест</a>
                                     </small>
                                     {% else %}
                                     <small class="text-warning d-block ms-4 mt-1">
-                                        <i class="bi bi-exclamation-triangle"></i> <a href="{% url 'quiz_create' lesson.id %}">Создать тест для этого урока</a>
+                                        <i class="bi bi-exclamation-triangle"></i> Тест не настроен. <a href="{% url 'course_builder' course.slug %}">Открыть конструктор</a>
                                     </small>
                                     {% endif %}
                                 {% endif %}
@@ -173,31 +152,26 @@
                                         {% if lesson.assignment.due_date %}
                                         , дедлайн {{ lesson.assignment.due_date|date:"d.m.Y" }}
                                         {% endif %}
+                                        <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="ms-2">Просмотр работ</a>
                                     </small>
                                     {% else %}
                                     <small class="text-warning d-block ms-4 mt-1">
-                                        <i class="bi bi-exclamation-triangle"></i> <a href="{% url 'assignment_create' lesson.id %}">Создать задание для этого урока</a>
+                                        <i class="bi bi-exclamation-triangle"></i> Задание не настроено. <a href="{% url 'course_builder' course.slug %}">Открыть конструктор</a>
                                     </small>
                                     {% endif %}
                                 {% endif %}
                             </div>
                             <div class="btn-group" role="group">
                                 {% if lesson.quiz %}
-                                <a href="{% url 'instructor_quiz_detail' lesson.quiz.id %}" class="btn btn-sm btn-info" title="Управление тестом">
+                                <a href="{% url 'quiz_builder' lesson.quiz.id %}" class="btn btn-sm btn-info" title="Редактировать тест">
                                     <i class="bi bi-question-circle"></i>
                                 </a>
                                 {% endif %}
                                 {% if lesson.assignment %}
-                                <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="btn btn-sm btn-success" title="Управление заданием">
+                                <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="btn btn-sm btn-success" title="Просмотр работ">
                                     <i class="bi bi-clipboard-check"></i>
                                 </a>
                                 {% endif %}
-                                <a href="{% url 'lesson_update' lesson.id %}" class="btn btn-sm btn-outline-secondary" title="Редактировать">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="{% url 'lesson_delete' lesson.id %}" class="btn btn-sm btn-outline-danger" title="Удалить">
-                                    <i class="bi bi-trash"></i>
-                                </a>
                             </div>
                         </div>
                     </li>
@@ -212,9 +186,9 @@
             {% else %}
             <div class="text-center py-4">
                 <i class="bi bi-folder" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-2 text-muted">Пока нет разделов. Добавьте первый раздел курса.</p>
-                <a href="{% url 'section_create' course.slug %}" class="btn btn-primary">
-                    <i class="bi bi-plus"></i> Добавить раздел
+                <p class="mt-2 text-muted">Пока нет разделов. Добавьте первый раздел курса в конструкторе.</p>
+                <a href="{% url 'course_builder' course.slug %}" class="btn btn-primary">
+                    <i class="bi bi-tools"></i> Открыть конструктор курса
                 </a>
             </div>
             {% endif %}

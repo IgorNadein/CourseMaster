@@ -1,0 +1,835 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} - Конструктор курса - CourseMaster{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/course-builder.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="course-builder">
+    <!-- Верхняя панель -->
+    <div class="builder-header">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'instructor_courses' %}" class="btn btn-link text-white p-0" title="Назад к курсам">
+                <i class="bi bi-arrow-left fs-4"></i>
+            </a>
+            <div class="course-title-edit">
+                <input type="text" 
+                       id="courseTitle" 
+                       class="course-title-input" 
+                       value="{{ course.title }}"
+                       placeholder="Название курса">
+            </div>
+            <span id="saveIndicator" class="save-indicator">
+                <i class="bi bi-check-circle"></i> Сохранено
+            </span>
+        </div>
+        <div class="header-actions">
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-gear"></i> Настройки
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#courseSettingsModal">
+                        <i class="bi bi-sliders"></i> Основные настройки
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'media_library' course.slug %}">
+                        <i class="bi bi-images"></i> Медиа-библиотека
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="{% url 'course_delete' course.slug %}">
+                        <i class="bi bi-trash"></i> Удалить курс
+                    </a></li>
+                </ul>
+            </div>
+            
+            <a href="{% url 'course_detail' course.slug %}" class="btn btn-outline-light btn-sm" target="_blank">
+                <i class="bi bi-eye"></i> Предпросмотр
+            </a>
+            
+            {% if course.status == 'draft' %}
+            <button type="button" class="btn btn-success btn-sm" id="publishBtn">
+                <i class="bi bi-upload"></i> Опубликовать
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-warning btn-sm" id="unpublishBtn">
+                <i class="bi bi-pause-circle"></i> Снять с публикации
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="builder-container">
+        <!-- Боковая панель -->
+        <aside class="builder-sidebar">
+            <!-- Статистика -->
+            <div class="sidebar-section">
+                <h6 class="sidebar-title">
+                    <i class="bi bi-bar-chart"></i> Статистика
+                </h6>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value" id="statSections">{{ sections|length }}</span>
+                        <span class="stat-label">Разделов</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="statLessons">{{ total_lessons }}</span>
+                        <span class="stat-label">Уроков</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ total_enrollments }}</span>
+                        <span class="stat-label">Студентов</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ course.average_rating|floatformat:1 }}</span>
+                        <span class="stat-label">Рейтинг</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статус -->
+            <div class="sidebar-section">
+                <h6 class="sidebar-title">
+                    <i class="bi bi-info-circle"></i> Статус
+                </h6>
+                <div class="status-badge {% if course.status == 'published' %}status-published{% else %}status-draft{% endif %}">
+                    {% if course.status == 'published' %}
+                    <i class="bi bi-check-circle"></i> Опубликован
+                    {% else %}
+                    <i class="bi bi-pencil"></i> Черновик
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Навигация по разделам -->
+            <div class="sidebar-section">
+                <h6 class="sidebar-title">
+                    <i class="bi bi-list-nested"></i> Структура
+                </h6>
+                <nav class="section-nav" id="sectionNav">
+                    {% for section in sections %}
+                    <a href="#section-{{ section.id }}" class="section-nav-item">
+                        <span class="nav-number">{{ forloop.counter }}</span>
+                        <span class="nav-title">{{ section.title }}</span>
+                        <span class="nav-badge">{{ section.lessons.count }}</span>
+                    </a>
+                    {% empty %}
+                    <p class="text-muted small px-3">Нет разделов</p>
+                    {% endfor %}
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="builder-main">
+            <!-- Контейнер разделов -->
+            <div class="sections-container" id="sectionsContainer">
+                {% for section in sections %}
+                <div class="section-card" id="section-{{ section.id }}" data-section-id="{{ section.id }}">
+                    <!-- Заголовок раздела -->
+                    <div class="section-header">
+                        <div class="section-drag-handle">
+                            <i class="bi bi-grip-vertical"></i>
+                        </div>
+                        <div class="section-number">{{ forloop.counter }}</div>
+                        <input type="text" 
+                               class="section-title-input" 
+                               value="{{ section.title }}"
+                               placeholder="Название раздела"
+                               onchange="updateSection({{ section.id }}, 'title', this.value)">
+                        <div class="section-actions">
+                            <button type="button" class="btn btn-sm btn-link" onclick="toggleSectionCollapse({{ section.id }})">
+                                <i class="bi bi-chevron-up"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-danger" onclick="deleteSection({{ section.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Контент раздела (уроки) -->
+                    <div class="section-content" id="sectionContent-{{ section.id }}">
+                        <!-- Список уроков -->
+                        <div class="lessons-list" id="lessonsList-{{ section.id }}">
+                            {% for lesson in section.lessons.all %}
+                            <div class="lesson-card" id="lesson-{{ lesson.id }}" data-lesson-id="{{ lesson.id }}">
+                                <div class="lesson-drag-handle">
+                                    <i class="bi bi-grip-vertical"></i>
+                                </div>
+                                <div class="lesson-icon {% if lesson.lesson_type == 'video' %}icon-video{% elif lesson.lesson_type == 'article' %}icon-article{% elif lesson.lesson_type == 'quiz' %}icon-quiz{% else %}icon-assignment{% endif %}">
+                                    <i class="bi bi-{% if lesson.lesson_type == 'video' %}play-circle{% elif lesson.lesson_type == 'article' %}file-text{% elif lesson.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
+                                </div>
+                                <div class="lesson-info">
+                                    <input type="text" 
+                                           class="lesson-title-input" 
+                                           value="{{ lesson.title }}"
+                                           placeholder="Название урока"
+                                           onchange="updateLesson({{ lesson.id }}, 'title', this.value)">
+                                    <div class="lesson-meta">
+                                        <span class="lesson-type">{{ lesson.get_lesson_type_display }}</span>
+                                        {% if lesson.duration_minutes > 0 %}
+                                        <span class="lesson-duration">{{ lesson.duration_minutes }} мин</span>
+                                        {% endif %}
+                                        {% if lesson.is_preview %}
+                                        <span class="lesson-preview-badge">Превью</span>
+                                        {% endif %}
+                                        
+                                        <!-- Статус теста/задания -->
+                                        {% if lesson.lesson_type == 'quiz' %}
+                                            {% if lesson.quiz %}
+                                            <span class="lesson-quiz-status status-ready">
+                                                <i class="bi bi-check-circle"></i> {{ lesson.quiz.questions.count }} вопросов
+                                            </span>
+                                            {% else %}
+                                            <span class="lesson-quiz-status status-pending">
+                                                <i class="bi bi-exclamation-triangle"></i> Нет теста
+                                            </span>
+                                            {% endif %}
+                                        {% endif %}
+                                        
+                                        {% if lesson.lesson_type == 'assignment' %}
+                                            {% if lesson.assignment %}
+                                            <span class="lesson-assignment-status status-ready">
+                                                <i class="bi bi-check-circle"></i> {{ lesson.assignment.max_points }} баллов
+                                            </span>
+                                            {% else %}
+                                            <span class="lesson-assignment-status status-pending">
+                                                <i class="bi bi-exclamation-triangle"></i> Нет задания
+                                            </span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="lesson-actions">
+                                    <button type="button" class="btn btn-sm btn-link" onclick="editLesson({{ lesson.id }})" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% if lesson.lesson_type == 'quiz' %}
+                                        {% if lesson.quiz %}
+                                        <a href="{% url 'quiz_builder' lesson.quiz.id %}" class="btn btn-sm btn-link text-info" title="Редактор теста">
+                                            <i class="bi bi-question-circle"></i>
+                                        </a>
+                                        {% else %}
+                                        <button type="button" class="btn btn-sm btn-link text-warning" onclick="createQuiz({{ lesson.id }})" title="Создать тест">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% if lesson.lesson_type == 'assignment' %}
+                                        {% if lesson.assignment %}
+                                        <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="btn btn-sm btn-link text-success" title="Просмотр работ">
+                                            <i class="bi bi-clipboard-check"></i>
+                                        </a>
+                                        {% else %}
+                                        <button type="button" class="btn btn-sm btn-link text-warning" onclick="createAssignment({{ lesson.id }})" title="Создать задание">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+                                    <button type="button" class="btn btn-sm btn-link text-danger" onclick="deleteLesson({{ lesson.id }})" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Кнопка добавления урока -->
+                        <div class="add-lesson-section">
+                            <div class="add-lesson-buttons">
+                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'video')">
+                                    <i class="bi bi-play-circle"></i>
+                                    <span>Видео</span>
+                                </button>
+                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'article')">
+                                    <i class="bi bi-file-text"></i>
+                                    <span>Статья</span>
+                                </button>
+                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'quiz')">
+                                    <i class="bi bi-question-circle"></i>
+                                    <span>Тест</span>
+                                </button>
+                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'assignment')">
+                                    <i class="bi bi-clipboard-check"></i>
+                                    <span>Задание</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Кнопка добавления раздела -->
+            <div class="add-section-container">
+                <button type="button" class="add-section-btn" onclick="addSection()">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Добавить раздел</span>
+                </button>
+            </div>
+
+            {% if not sections %}
+            <!-- Пустое состояние -->
+            <div class="empty-state" id="emptyState">
+                <i class="bi bi-folder-plus"></i>
+                <h3>Начните создание курса</h3>
+                <p>Добавьте первый раздел, чтобы начать структурировать ваш курс</p>
+                <button type="button" class="btn btn-primary btn-lg" onclick="addSection()">
+                    <i class="bi bi-plus-lg"></i> Добавить раздел
+                </button>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования урока -->
+<div class="modal fade" id="lessonEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil"></i> Редактирование урока
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="lessonEditForm">
+                    <input type="hidden" id="editLessonId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Название урока</label>
+                        <input type="text" class="form-control" id="editLessonTitle" required>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Тип урока</label>
+                            <select class="form-select" id="editLessonType">
+                                <option value="video">Видео</option>
+                                <option value="article">Статья</option>
+                                <option value="quiz">Тест</option>
+                                <option value="assignment">Задание</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Длительность (минуты)</label>
+                            <input type="number" class="form-control" id="editLessonDuration" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="videoUrlGroup">
+                        <label class="form-label">URL видео</label>
+                        <input type="url" class="form-control" id="editLessonVideoUrl" placeholder="https://youtube.com/...">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Содержание (Markdown)</label>
+                        <textarea class="form-control" id="editLessonContent" rows="8" placeholder="Содержание урока..."></textarea>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="editLessonPreview">
+                        <label class="form-check-label" for="editLessonPreview">
+                            Бесплатный просмотр (доступен без покупки курса)
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveLessonEdit()">
+                    <i class="bi bi-check-lg"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно настроек курса -->
+<div class="modal fade" id="courseSettingsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-sliders"></i> Настройки курса
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="courseSettingsForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Название курса</label>
+                            <input type="text" class="form-control" id="settingsTitle" value="{{ course.title }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Категория</label>
+                            <select class="form-select" id="settingsCategory">
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if cat.id == course.category_id %}selected{% endif %}>{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Подзаголовок</label>
+                        <input type="text" class="form-control" id="settingsSubtitle" value="{{ course.subtitle }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea class="form-control" id="settingsDescription" rows="4">{{ course.description }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Уровень сложности</label>
+                            <select class="form-select" id="settingsLevel">
+                                <option value="beginner" {% if course.level == 'beginner' %}selected{% endif %}>Начинающий</option>
+                                <option value="intermediate" {% if course.level == 'intermediate' %}selected{% endif %}>Средний</option>
+                                <option value="advanced" {% if course.level == 'advanced' %}selected{% endif %}>Продвинутый</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Язык</label>
+                            <input type="text" class="form-control" id="settingsLanguage" value="{{ course.language }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Длительность (часы)</label>
+                            <input type="number" class="form-control" id="settingsDuration" value="{{ course.duration_hours }}" step="0.5" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Цена (₽)</label>
+                            <input type="number" class="form-control" id="settingsPrice" value="{{ course.price }}" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Цена со скидкой (₽)</label>
+                            <input type="number" class="form-control" id="settingsDiscountPrice" value="{{ course.discount_price|default:'' }}" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="settingsIsFree" {% if course.is_free %}checked{% endif %}>
+                                <label class="form-check-label" for="settingsIsFree">Бесплатный курс</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">URL превью видео</label>
+                        <input type="url" class="form-control" id="settingsPreviewVideo" value="{{ course.preview_video }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Чему научатся студенты (каждый пункт с новой строки)</label>
+                        <textarea class="form-control" id="settingsLearningOutcomes" rows="3">{{ course.learning_outcomes }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Требования (каждый пункт с новой строки)</label>
+                        <textarea class="form-control" id="settingsRequirements" rows="3">{{ course.requirements }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Целевая аудитория (каждый пункт с новой строки)</label>
+                        <textarea class="form-control" id="settingsTargetAudience" rows="3">{{ course.target_audience }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveCourseSettings()">
+                    <i class="bi bi-check-lg"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Константы
+const COURSE_ID = {{ course.id }};
+const COURSE_SLUG = '{{ course.slug }}';
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+// Получить CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Показать индикатор сохранения
+function showSaveIndicator(saving = false) {
+    const indicator = document.getElementById('saveIndicator');
+    if (saving) {
+        indicator.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Сохранение...';
+        indicator.classList.add('saving');
+    } else {
+        indicator.innerHTML = '<i class="bi bi-check-circle"></i> Сохранено';
+        indicator.classList.remove('saving');
+    }
+}
+
+// API запрос
+async function apiRequest(url, method, data = null) {
+    showSaveIndicator(true);
+    try {
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        };
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+        const response = await fetch(url, options);
+        const result = await response.json();
+        showSaveIndicator(false);
+        return result;
+    } catch (error) {
+        console.error('API Error:', error);
+        showSaveIndicator(false);
+        throw error;
+    }
+}
+
+// ============================================================
+// РАЗДЕЛЫ
+// ============================================================
+
+// Добавить раздел
+async function addSection() {
+    const result = await apiRequest(`/courses/api/course/${COURSE_ID}/section/create/`, 'POST', {
+        title: 'Новый раздел'
+    });
+    
+    if (result.success) {
+        location.reload();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось создать раздел'));
+    }
+}
+
+// Обновить раздел
+let sectionSaveTimeout;
+function updateSection(sectionId, field, value) {
+    clearTimeout(sectionSaveTimeout);
+    sectionSaveTimeout = setTimeout(async () => {
+        const data = {};
+        data[field] = value;
+        await apiRequest(`/courses/api/section/${sectionId}/update/`, 'POST', data);
+    }, 500);
+}
+
+// Удалить раздел
+async function deleteSection(sectionId) {
+    if (!confirm('Удалить раздел и все его уроки? Это действие необратимо.')) {
+        return;
+    }
+    
+    const result = await apiRequest(`/courses/api/section/${sectionId}/delete/`, 'POST');
+    
+    if (result.success) {
+        document.getElementById(`section-${sectionId}`).remove();
+        updateStats();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось удалить раздел'));
+    }
+}
+
+// Свернуть/развернуть раздел
+function toggleSectionCollapse(sectionId) {
+    const content = document.getElementById(`sectionContent-${sectionId}`);
+    const btn = event.currentTarget;
+    const icon = btn.querySelector('i');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.className = 'bi bi-chevron-up';
+    } else {
+        content.style.display = 'none';
+        icon.className = 'bi bi-chevron-down';
+    }
+}
+
+// ============================================================
+// УРОКИ
+// ============================================================
+
+// Добавить урок
+async function addLesson(sectionId, lessonType) {
+    const titles = {
+        'video': 'Новый видео-урок',
+        'article': 'Новая статья',
+        'quiz': 'Новый тест',
+        'assignment': 'Новое задание'
+    };
+    
+    const result = await apiRequest(`/courses/api/section/${sectionId}/lesson/create/`, 'POST', {
+        title: titles[lessonType],
+        lesson_type: lessonType
+    });
+    
+    if (result.success) {
+        location.reload();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось создать урок'));
+    }
+}
+
+// Обновить урок (inline)
+let lessonSaveTimeout;
+function updateLesson(lessonId, field, value) {
+    clearTimeout(lessonSaveTimeout);
+    lessonSaveTimeout = setTimeout(async () => {
+        const data = {};
+        data[field] = value;
+        await apiRequest(`/courses/api/lesson/${lessonId}/update/`, 'POST', data);
+    }, 500);
+}
+
+// Открыть модальное окно редактирования урока
+async function editLesson(lessonId) {
+    // Загрузить данные урока
+    const result = await apiRequest(`/courses/api/lesson/${lessonId}/`, 'GET');
+    
+    if (result.success) {
+        const lesson = result.lesson;
+        
+        document.getElementById('editLessonId').value = lesson.id;
+        document.getElementById('editLessonTitle').value = lesson.title;
+        document.getElementById('editLessonType').value = lesson.lesson_type;
+        document.getElementById('editLessonDuration').value = lesson.duration_minutes || 0;
+        document.getElementById('editLessonVideoUrl').value = lesson.video_url || '';
+        document.getElementById('editLessonContent').value = lesson.content || '';
+        document.getElementById('editLessonPreview').checked = lesson.is_preview;
+        
+        // Показать/скрыть поле URL видео
+        toggleVideoUrlField(lesson.lesson_type);
+        
+        // Открыть модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('lessonEditModal'));
+        modal.show();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось загрузить урок'));
+    }
+}
+
+// Показать/скрыть поле URL видео
+function toggleVideoUrlField(lessonType) {
+    const group = document.getElementById('videoUrlGroup');
+    group.style.display = lessonType === 'video' ? 'block' : 'none';
+}
+
+document.getElementById('editLessonType').addEventListener('change', function() {
+    toggleVideoUrlField(this.value);
+});
+
+// Сохранить редактирование урока
+async function saveLessonEdit() {
+    const lessonId = document.getElementById('editLessonId').value;
+    const data = {
+        title: document.getElementById('editLessonTitle').value,
+        lesson_type: document.getElementById('editLessonType').value,
+        duration_minutes: parseInt(document.getElementById('editLessonDuration').value) || 0,
+        video_url: document.getElementById('editLessonVideoUrl').value,
+        content: document.getElementById('editLessonContent').value,
+        is_preview: document.getElementById('editLessonPreview').checked
+    };
+    
+    const result = await apiRequest(`/courses/api/lesson/${lessonId}/update/`, 'POST', data);
+    
+    if (result.success) {
+        // Закрыть модальное окно и обновить страницу
+        bootstrap.Modal.getInstance(document.getElementById('lessonEditModal')).hide();
+        location.reload();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось сохранить урок'));
+    }
+}
+
+// Удалить урок
+async function deleteLesson(lessonId) {
+    if (!confirm('Удалить этот урок? Это действие необратимо.')) {
+        return;
+    }
+    
+    const result = await apiRequest(`/courses/api/lesson/${lessonId}/delete/`, 'POST');
+    
+    if (result.success) {
+        document.getElementById(`lesson-${lessonId}`).remove();
+        updateStats();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось удалить урок'));
+    }
+}
+
+// ============================================================
+// ТЕСТЫ И ЗАДАНИЯ
+// ============================================================
+
+// Создать тест для урока
+async function createQuiz(lessonId) {
+    const result = await apiRequest(`/courses/api/lesson/${lessonId}/quiz/create/`, 'POST', {
+        title: 'Тест',
+        pass_percentage: 50
+    });
+    
+    if (result.success) {
+        // Перенаправить на редактор теста
+        window.location.href = `/courses/instructor/quiz/${result.quiz_id}/builder/`;
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось создать тест'));
+    }
+}
+
+// Создать задание для урока
+async function createAssignment(lessonId) {
+    const result = await apiRequest(`/courses/api/lesson/${lessonId}/assignment/create/`, 'POST', {
+        title: 'Задание',
+        max_points: 100
+    });
+    
+    if (result.success) {
+        // Перенаправить на страницу задания
+        window.location.href = `/courses/instructor/assignment/${result.assignment_id}/`;
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось создать задание'));
+    }
+}
+
+// ============================================================
+// НАСТРОЙКИ КУРСА
+// ============================================================
+
+// Сохранить настройки курса
+async function saveCourseSettings() {
+    const data = {
+        title: document.getElementById('settingsTitle').value,
+        subtitle: document.getElementById('settingsSubtitle').value,
+        description: document.getElementById('settingsDescription').value,
+        category_id: parseInt(document.getElementById('settingsCategory').value),
+        level: document.getElementById('settingsLevel').value,
+        language: document.getElementById('settingsLanguage').value,
+        duration_hours: parseFloat(document.getElementById('settingsDuration').value) || 0,
+        price: parseFloat(document.getElementById('settingsPrice').value) || 0,
+        discount_price: parseFloat(document.getElementById('settingsDiscountPrice').value) || null,
+        is_free: document.getElementById('settingsIsFree').checked,
+        preview_video: document.getElementById('settingsPreviewVideo').value,
+        learning_outcomes: document.getElementById('settingsLearningOutcomes').value,
+        requirements: document.getElementById('settingsRequirements').value,
+        target_audience: document.getElementById('settingsTargetAudience').value
+    };
+    
+    const result = await apiRequest(`/courses/api/course/${COURSE_ID}/update/`, 'POST', data);
+    
+    if (result.success) {
+        bootstrap.Modal.getInstance(document.getElementById('courseSettingsModal')).hide();
+        // Обновить заголовок
+        document.getElementById('courseTitle').value = data.title;
+        alert('Настройки сохранены!');
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось сохранить настройки'));
+    }
+}
+
+// Обновить название курса (inline)
+let courseTitleTimeout;
+document.getElementById('courseTitle').addEventListener('input', function() {
+    clearTimeout(courseTitleTimeout);
+    courseTitleTimeout = setTimeout(async () => {
+        await apiRequest(`/courses/api/course/${COURSE_ID}/update/`, 'POST', {
+            title: this.value
+        });
+    }, 500);
+});
+
+// ============================================================
+// ПУБЛИКАЦИЯ
+// ============================================================
+
+// Опубликовать курс
+document.getElementById('publishBtn')?.addEventListener('click', async function() {
+    if (!confirm('Опубликовать курс? Он станет доступен студентам.')) {
+        return;
+    }
+    
+    const result = await apiRequest(`/courses/api/course/${COURSE_ID}/publish/`, 'POST');
+    
+    if (result.success) {
+        location.reload();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось опубликовать курс'));
+    }
+});
+
+// Снять с публикации
+document.getElementById('unpublishBtn')?.addEventListener('click', async function() {
+    if (!confirm('Снять курс с публикации? Он перестанет быть доступен студентам.')) {
+        return;
+    }
+    
+    const result = await apiRequest(`/courses/api/course/${COURSE_ID}/unpublish/`, 'POST');
+    
+    if (result.success) {
+        location.reload();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось снять курс с публикации'));
+    }
+});
+
+// ============================================================
+// УТИЛИТЫ
+// ============================================================
+
+// Обновить статистику
+function updateStats() {
+    const sections = document.querySelectorAll('.section-card').length;
+    const lessons = document.querySelectorAll('.lesson-card').length;
+    
+    document.getElementById('statSections').textContent = sections;
+    document.getElementById('statLessons').textContent = lessons;
+    
+    // Скрыть/показать пустое состояние
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) {
+        emptyState.style.display = sections === 0 ? 'flex' : 'none';
+    }
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавить smooth scroll к навигации
+    document.querySelectorAll('.section-nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

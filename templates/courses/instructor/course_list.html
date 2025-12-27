@@ -93,6 +93,9 @@
                         </td>
                         <td>{{ course.created_at|date:"d.m.Y" }}</td>
                         <td>
+                            <a href="{% url 'course_builder' course.slug %}" class="btn btn-sm btn-primary" title="Конструктор">
+                                <i class="bi bi-tools"></i>
+                            </a>
                             <a href="{% url 'instructor_course_detail' course.slug %}" class="btn btn-sm btn-outline-primary" title="Управление">
                                 <i class="bi bi-gear"></i>
                             </a>
