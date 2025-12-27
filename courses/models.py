@@ -96,6 +96,12 @@ class Course(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             base_slug = slugify(self.title)
+            
+            # Если slug пустой (например, только кириллица)
+            if not base_slug:
+                import uuid
+                base_slug = f"course-{uuid.uuid4().hex[:8]}"
+            
             self.slug = base_slug
             
             # Проверить уникальность slug
@@ -683,3 +689,129 @@ class Refund(models.Model):
     
     def __str__(self):
         return f"Refund: {self.purchase.student.username} - {self.refund_amount} RUB ({self.status})"
+
+
+# ============================================================
+# MEDIA LIBRARY (Медиа-библиотека для преподавателей)
+# ============================================================
+
+class CourseMedia(models.Model):
+    """
+    Медиа-файл курса (изображения, видео, документы)
+    Преподаватель загружает файлы в библиотеку, затем вставляет ссылки в уроки
+    """
+    MEDIA_TYPE_CHOICES = [
+        ('image', 'Изображение'),
+        ('video', 'Видео'),
+        ('document', 'Документ'),
+        ('audio', 'Аудио'),
+        ('other', 'Другое'),
+    ]
+    
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='media_files')
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_media')
+    
+    # Файл
+    file = models.FileField(upload_to='courses/media/%Y/%m/')
+    original_filename = models.CharField(max_length=255, help_text="Оригинальное имя файла")
+    
+    # Метаданные
+    title = models.CharField(max_length=200, blank=True, help_text="Название для отображения")
+    description = models.TextField(blank=True, help_text="Описание файла")
+    media_type = models.CharField(max_length=20, choices=MEDIA_TYPE_CHOICES, default='other')
+    
+    # Размер и MIME-тип
+    file_size = models.PositiveIntegerField(default=0, help_text="Размер файла в байтах")
+    mime_type = models.CharField(max_length=100, blank=True)
+    
+    # Для изображений: размеры
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
+    
+    # Для видео/аудио: длительность
+    duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    
+    # Временные метки
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Медиа-файл курса"
+        verbose_name_plural = "Медиа-файлы курсов"
+    
+    def __str__(self):
+        return f"{self.title or self.original_filename} ({self.course.title})"
+    
+    def save(self, *args, **kwargs):
+        # Автоматически определить тип медиа по расширению
+        if self.file and not self.media_type:
+            ext = self.file.name.lower().split('.')[-1]
+            if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp']:
+                self.media_type = 'image'
+            elif ext in ['mp4', 'webm', 'mov', 'avi', 'mkv']:
+                self.media_type = 'video'
+            elif ext in ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt']:
+                self.media_type = 'document'
+            elif ext in ['mp3', 'wav', 'ogg', 'flac', 'm4a']:
+                self.media_type = 'audio'
+            else:
+                self.media_type = 'other'
+        
+        # Сохранить размер файла
+        if self.file and hasattr(self.file, 'size'):
+            self.file_size = self.file.size
+        
+        super().save(*args, **kwargs)
+    
+    @property
+    def file_size_display(self):
+        """Человекочитаемый размер файла"""
+        size = self.file_size
+        if size < 1024:
+            return f"{size} B"
+        elif size < 1024 * 1024:
+            return f"{size / 1024:.1f} KB"
+        elif size < 1024 * 1024 * 1024:
+            return f"{size / (1024 * 1024):.1f} MB"
+        else:
+            return f"{size / (1024 * 1024 * 1024):.1f} GB"
+    
+    @property
+    def is_image(self):
+        return self.media_type == 'image'
+    
+    @property
+    def is_video(self):
+        return self.media_type == 'video'
+    
+    @property
+    def is_document(self):
+        return self.media_type == 'document'
+    
+    @property
+    def file_extension(self):
+        """Расширение файла"""
+        if self.original_filename:
+            return self.original_filename.split('.')[-1].lower()
+        return ''
+    
+    @property
+    def markdown_embed(self):
+        """Markdown код для вставки файла"""
+        if self.is_image:
+            return f"![{self.title or self.original_filename}]({self.file.url})"
+        elif self.is_video:
+            return f'<video src="{self.file.url}" controls width="100%"></video>'
+        else:
+            return f"[{self.title or self.original_filename}]({self.file.url})"
+    
+    @property
+    def html_embed(self):
+        """HTML код для вставки файла"""
+        if self.is_image:
+            return f'<img src="{self.file.url}" alt="{self.title or self.original_filename}" class="img-fluid">'
+        elif self.is_video:
+            return f'<video src="{self.file.url}" controls class="w-100"></video>'
+        else:
+            return f'<a href="{self.file.url}" target="_blank">{self.title or self.original_filename}</a>'

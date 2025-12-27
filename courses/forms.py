@@ -1,6 +1,6 @@
 from django import forms
 from .models import (Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, 
-                     AssignmentSubmission, Review, LessonComment, Purchase, Payment, PromoCode)
+                     AssignmentSubmission, Review, LessonComment, Purchase, Payment, PromoCode, CourseMedia)
 
 
 class CourseForm(forms.ModelForm):
@@ -469,3 +469,80 @@ class PromoCodeForm(forms.Form):
         }),
         label='Промокод'
     )
+
+
+# ============================================================
+# MEDIA LIBRARY FORMS (Медиа-библиотека)
+# ============================================================
+
+class CourseMediaUploadForm(forms.ModelForm):
+    """Форма загрузки медиа-файла"""
+    
+    class Meta:
+        model = CourseMedia
+        fields = ['file', 'title', 'description']
+        widgets = {
+            'file': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt'
+            }),
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Название файла (опционально)'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Описание файла (опционально)'
+            }),
+        }
+        labels = {
+            'file': 'Файл',
+            'title': 'Название',
+            'description': 'Описание',
+        }
+    
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        if file:
+            # Проверка размера (максимум 50 MB)
+            max_size = 50 * 1024 * 1024  # 50 MB
+            if file.size > max_size:
+                raise forms.ValidationError(f'Файл слишком большой. Максимальный размер: 50 MB.')
+            
+            # Разрешенные расширения
+            allowed_extensions = [
+                'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp',  # Изображения
+                'mp4', 'webm', 'mov', 'avi', 'mkv',  # Видео
+                'mp3', 'wav', 'ogg', 'flac', 'm4a',  # Аудио
+                'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt',  # Документы
+            ]
+            
+            ext = file.name.lower().split('.')[-1]
+            if ext not in allowed_extensions:
+                raise forms.ValidationError(f'Недопустимый тип файла. Разрешены: {", ".join(allowed_extensions)}')
+        
+        return file
+
+
+class CourseMediaEditForm(forms.ModelForm):
+    """Форма редактирования метаданных медиа-файла"""
+    
+    class Meta:
+        model = CourseMedia
+        fields = ['title', 'description']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Название файла'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Описание файла'
+            }),
+        }
+        labels = {
+            'title': 'Название',
+            'description': 'Описание',
+        }

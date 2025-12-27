@@ -31,6 +31,10 @@ urlpatterns = [
     path('purchases/', views.PurchaseHistoryView.as_view(), name='purchase_history'),
     path('refund/<int:purchase_id>/', views.RefundRequestView.as_view(), name='refund_request'),
     
+    # Тесты (Студенты)
+    path('quiz/<int:quiz_id>/take/', views.QuizTakeView.as_view(), name='quiz_take'),
+    path('quiz/attempt/<int:attempt_id>/results/', views.QuizResultsView.as_view(), name='quiz_results'),
+    
     # Тесты (Преподаватели)
     path('instructor/lesson/<int:lesson_id>/quiz/create/', views.InstructorQuizCreateView.as_view(), name='quiz_create'),
     path('instructor/quiz/<int:quiz_id>/', views.InstructorQuizDetailView.as_view(), name='instructor_quiz_detail'),
@@ -57,6 +61,14 @@ urlpatterns = [
     path('instructor/section/<int:section_id>/lesson/create/', views.LessonCreateView.as_view(), name='lesson_create'),
     path('instructor/lesson/<int:lesson_id>/edit/', views.LessonUpdateView.as_view(), name='lesson_update'),
     path('instructor/lesson/<int:lesson_id>/delete/', views.LessonDeleteView.as_view(), name='lesson_delete'),
+    
+    # Медиа-библиотека (Преподаватели)
+    path('instructor/course/<slug:slug>/media/', views.MediaLibraryView.as_view(), name='media_library'),
+    path('instructor/course/<slug:slug>/media/upload/', views.MediaUploadView.as_view(), name='media_upload'),
+    path('instructor/course/<slug:slug>/media/upload/ajax/', views.MediaUploadAjaxView.as_view(), name='media_upload_ajax'),
+    path('instructor/media/<int:media_id>/delete/', views.MediaDeleteView.as_view(), name='media_delete'),
+    path('instructor/media/<int:media_id>/delete/ajax/', views.MediaDeleteAjaxView.as_view(), name='media_delete_ajax'),
+    path('instructor/media/<int:media_id>/url/', views.MediaGetUrlView.as_view(), name='media_get_url'),
     
     # Домашние задания (Преподаватели)
     path('instructor/lesson/<int:lesson_id>/assignment/create/', views.InstructorAssignmentCreateView.as_view(), name='assignment_create'),

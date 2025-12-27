@@ -1,8 +1,9 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import (Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, 
                      AssignmentSubmission, Certificate, LessonComment, PaymentMethod, Purchase, 
-                     Payment, PromoCode, Refund)
+                     Payment, PromoCode, Refund, CourseMedia)
 
 
 @admin.register(Category)
@@ -330,3 +331,53 @@ class RefundAdmin(admin.ModelAdmin):
             'fields': ('rejection_reason',)
         }),
     )
+
+
+# ============================================================
+# MEDIA LIBRARY ADMIN (Медиа-библиотека)
+# ============================================================
+
+@admin.register(CourseMedia)
+class CourseMediaAdmin(admin.ModelAdmin):
+    list_display = ['thumbnail_preview', 'title', 'original_filename', 'course', 'media_type', 'file_size_display', 'created_at']
+    list_filter = ['media_type', 'course', 'created_at']
+    search_fields = ['title', 'original_filename', 'course__title', 'uploaded_by__username']
+    readonly_fields = ['file_size', 'mime_type', 'width', 'height', 'duration_seconds', 'created_at', 'updated_at', 'file_preview']
+    
+    fieldsets = (
+        ('Файл', {
+            'fields': ('course', 'file', 'original_filename', 'file_preview')
+        }),
+        ('Метаданные', {
+            'fields': ('title', 'description', 'media_type')
+        }),
+        ('Технические данные', {
+            'fields': ('file_size', 'mime_type', 'width', 'height', 'duration_seconds')
+        }),
+        ('Временные метки', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    def file_size_display(self, obj):
+        return obj.file_size_display
+    file_size_display.short_description = 'Размер'
+    
+    def thumbnail_preview(self, obj):
+        if obj.is_image and obj.file:
+            return format_html('<img src="{}" width="50" height="50" style="object-fit: cover; border-radius: 4px;" />', obj.file.url)
+        elif obj.is_video:
+            return format_html('<i class="bi bi-film" style="font-size: 24px; color: #6c757d;"></i>')
+        elif obj.is_document:
+            return format_html('<i class="bi bi-file-earmark-text" style="font-size: 24px; color: #6c757d;"></i>')
+        else:
+            return format_html('<i class="bi bi-file" style="font-size: 24px; color: #6c757d;"></i>')
+    thumbnail_preview.short_description = ''
+    
+    def file_preview(self, obj):
+        if obj.is_image and obj.file:
+            return format_html('<img src="{}" style="max-width: 300px; max-height: 200px;" />', obj.file.url)
+        elif obj.is_video and obj.file:
+            return format_html('<video src="{}" controls style="max-width: 300px;"></video>', obj.file.url)
+        return 'Нет предпросмотра'
+    file_preview.short_description = 'Предпросмотр'

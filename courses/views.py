@@ -12,10 +12,11 @@ from django.conf import settings
 from decimal import Decimal
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission,
-                     Certificate, LessonComment, Payment, Purchase, PromoCode, Refund, PaymentMethod)
+                     Certificate, LessonComment, Payment, Purchase, PromoCode, Refund, PaymentMethod, CourseMedia)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
                     QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm,
-                    LessonCommentForm, CheckoutForm, StripePaymentForm, RefundRequestForm, PromoCodeForm)
+                    LessonCommentForm, CheckoutForm, StripePaymentForm, RefundRequestForm, PromoCodeForm,
+                    CourseMediaUploadForm, CourseMediaEditForm)
 
 
 class CourseListView(ListView):
@@ -285,6 +286,10 @@ class LessonView(LoginRequiredMixin, DetailView):
         lesson = self.object
         course = lesson.section.course
         
+        # Данные курса и раздела (добавляем сразу для доступа в шаблоне)
+        context['course'] = course
+        context['section'] = lesson.section
+        
         # Проверка доступа
         if not lesson.is_preview:
             # Только для записанных студентов или преподавателя
@@ -300,10 +305,6 @@ class LessonView(LoginRequiredMixin, DetailView):
                     'Запишитесь на курс для просмотра этого урока.'
                 )
                 return context
-        
-        # Данные курса и раздела
-        context['course'] = course
-        context['section'] = lesson.section
         
         # Все разделы и уроки для навигации
         context['sections'] = course.sections.prefetch_related('lessons').all()
@@ -457,13 +458,16 @@ class CourseCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.instructor = self.request.user
         form.instance.status = 'draft'
+        # Сохранить объект, чтобы slug был сгенерирован
+        self.object = form.save()
         messages.success(
             self.request,
             'Курс успешно создан! Теперь добавьте разделы и уроки.'
         )
-        return super().form_valid(form)
+        return redirect('instructor_course_detail', slug=self.object.slug)
     
     def get_success_url(self):
+        # Эта функция больше не используется, т.к. form_valid делает redirect
         return reverse('instructor_course_detail', kwargs={'slug': self.object.slug})
 
 
@@ -560,7 +564,13 @@ class SectionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     
     def form_valid(self, form):
         course_slug = self.kwargs.get('course_slug')
-        form.instance.course = get_object_or_404(Course, slug=course_slug)
+        course = get_object_or_404(Course, slug=course_slug)
+        form.instance.course = course
+        
+        # Автоматически установить порядковый номер (последний + 1)
+        last_section = Section.objects.filter(course=course).order_by('-order').first()
+        form.instance.order = (last_section.order + 1) if last_section else 1
+        
         messages.success(self.request, 'Раздел успешно создан!')
         return super().form_valid(form)
     
@@ -635,7 +645,13 @@ class LessonCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     
     def form_valid(self, form):
         section_id = self.kwargs.get('section_id')
-        form.instance.section = get_object_or_404(Section, id=section_id)
+        section = get_object_or_404(Section, id=section_id)
+        form.instance.section = section
+        
+        # Автоматически установить порядковый номер (последний + 1)
+        last_lesson = Lesson.objects.filter(section=section).order_by('-order').first()
+        form.instance.order = (last_lesson.order + 1) if last_lesson else 1
+        
         messages.success(self.request, 'Урок успешно создан!')
         return super().form_valid(form)
     
@@ -649,6 +665,14 @@ class LessonCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         context['section'] = section
         context['course'] = section.course
         return context
+    
+    def get_initial(self):
+        """Предзаполнить тип урока из GET-параметра"""
+        initial = super().get_initial()
+        lesson_type = self.request.GET.get('type')
+        if lesson_type in ['video', 'article', 'quiz', 'assignment']:
+            initial['lesson_type'] = lesson_type
+        return initial
 
 
 class LessonUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -1891,3 +1915,240 @@ class RefundRequestView(LoginRequiredMixin, CreateView):
     
     def get_success_url(self):
         return reverse_lazy('purchase_history')
+
+
+# ============================================================
+# MEDIA LIBRARY VIEWS (Медиа-библиотека для преподавателей)
+# ============================================================
+
+class MediaLibraryView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    """
+    Медиа-библиотека курса - просмотр всех загруженных файлов
+    """
+    model = CourseMedia
+    template_name = 'courses/instructor/media_library.html'
+    context_object_name = 'media_files'
+    paginate_by = 24
+    
+    def test_func(self):
+        course_slug = self.kwargs.get('slug')
+        course = get_object_or_404(Course, slug=course_slug)
+        return course.instructor == self.request.user
+    
+    def get_queryset(self):
+        course_slug = self.kwargs.get('slug')
+        self.course = get_object_or_404(Course, slug=course_slug)
+        
+        queryset = CourseMedia.objects.filter(course=self.course)
+        
+        # Фильтр по типу
+        media_type = self.request.GET.get('type')
+        if media_type in ['image', 'video', 'document', 'audio', 'other']:
+            queryset = queryset.filter(media_type=media_type)
+        
+        # Поиск
+        search = self.request.GET.get('q')
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(original_filename__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        return queryset.order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course'] = self.course
+        context['upload_form'] = CourseMediaUploadForm()
+        context['current_type'] = self.request.GET.get('type', '')
+        context['search_query'] = self.request.GET.get('q', '')
+        
+        # Статистика
+        all_media = CourseMedia.objects.filter(course=self.course)
+        context['total_files'] = all_media.count()
+        context['images_count'] = all_media.filter(media_type='image').count()
+        context['videos_count'] = all_media.filter(media_type='video').count()
+        context['documents_count'] = all_media.filter(media_type='document').count()
+        context['total_size'] = sum(m.file_size for m in all_media)
+        context['total_size_display'] = self._format_size(context['total_size'])
+        
+        return context
+    
+    def _format_size(self, size):
+        """Human-readable размер файла"""
+        if size < 1024:
+            return f"{size} B"
+        elif size < 1024 * 1024:
+            return f"{size / 1024:.1f} KB"
+        elif size < 1024 * 1024 * 1024:
+            return f"{size / (1024 * 1024):.1f} MB"
+        else:
+            return f"{size / (1024 * 1024 * 1024):.1f} GB"
+
+
+class MediaUploadView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """
+    Загрузка нового медиа-файла
+    """
+    model = CourseMedia
+    form_class = CourseMediaUploadForm
+    template_name = 'courses/instructor/media_upload.html'
+    
+    def test_func(self):
+        course_slug = self.kwargs.get('slug')
+        course = get_object_or_404(Course, slug=course_slug)
+        return course.instructor == self.request.user
+    
+    def form_valid(self, form):
+        course_slug = self.kwargs.get('slug')
+        course = get_object_or_404(Course, slug=course_slug)
+        
+        form.instance.course = course
+        form.instance.uploaded_by = self.request.user
+        form.instance.original_filename = form.cleaned_data['file'].name
+        
+        # Определить MIME-тип
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(form.cleaned_data['file'].name)
+        form.instance.mime_type = mime_type or 'application/octet-stream'
+        
+        messages.success(self.request, f'Файл "{form.instance.original_filename}" успешно загружен!')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('media_library', kwargs={'slug': self.kwargs.get('slug')})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        course_slug = self.kwargs.get('slug')
+        context['course'] = get_object_or_404(Course, slug=course_slug)
+        return context
+
+
+class MediaUploadAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX загрузка файлов (для drag-and-drop)
+    """
+    def post(self, request, slug):
+        course = get_object_or_404(Course, slug=slug)
+        
+        # Проверка прав доступа
+        if course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return JsonResponse({'error': 'Файл не предоставлен'}, status=400)
+        
+        # Проверка размера (50 MB)
+        max_size = 50 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return JsonResponse({'error': 'Файл слишком большой (макс. 50 MB)'}, status=400)
+        
+        # Определить MIME-тип
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(uploaded_file.name)
+        
+        # Создать запись
+        media = CourseMedia.objects.create(
+            course=course,
+            uploaded_by=request.user,
+            file=uploaded_file,
+            original_filename=uploaded_file.name,
+            mime_type=mime_type or 'application/octet-stream',
+            title=request.POST.get('title', ''),
+            description=request.POST.get('description', ''),
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': media.id,
+            'filename': media.original_filename,
+            'url': media.file.url,
+            'media_type': media.media_type,
+            'size': media.file_size_display,
+            'markdown': media.markdown_embed,
+            'html': media.html_embed,
+        })
+
+
+class MediaDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    """
+    Удаление медиа-файла
+    """
+    model = CourseMedia
+    template_name = 'courses/instructor/media_confirm_delete.html'
+    pk_url_kwarg = 'media_id'
+    
+    def test_func(self):
+        media = self.get_object()
+        return media.course.instructor == self.request.user
+    
+    def get_success_url(self):
+        return reverse('media_library', kwargs={'slug': self.object.course.slug})
+    
+    def delete(self, request, *args, **kwargs):
+        media = self.get_object()
+        filename = media.original_filename
+        
+        # Удалить файл с диска
+        if media.file:
+            media.file.delete(save=False)
+        
+        response = super().delete(request, *args, **kwargs)
+        messages.success(request, f'Файл "{filename}" удален.')
+        return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course'] = self.object.course
+        return context
+
+
+class MediaDeleteAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX удаление файла
+    """
+    def post(self, request, media_id):
+        media = get_object_or_404(CourseMedia, id=media_id)
+        
+        # Проверка прав доступа
+        if media.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        filename = media.original_filename
+        
+        # Удалить файл с диска
+        if media.file:
+            media.file.delete(save=False)
+        
+        media.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Файл "{filename}" удален.'
+        })
+
+
+class MediaGetUrlView(LoginRequiredMixin, View):
+    """
+    Получить URL и код для вставки медиа-файла
+    """
+    def get(self, request, media_id):
+        media = get_object_or_404(CourseMedia, id=media_id)
+        
+        # Проверка прав доступа (преподаватель курса)
+        if media.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        return JsonResponse({
+            'id': media.id,
+            'filename': media.original_filename,
+            'title': media.title,
+            'url': media.file.url,
+            'media_type': media.media_type,
+            'size': media.file_size_display,
+            'markdown': media.markdown_embed,
+            'html': media.html_embed,
+        })

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление файла - CourseMaster{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="bi bi-trash"></i> Удаление файла</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Вы уверены, что хотите удалить файл?</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Файл:</strong> {{ object.original_filename }}<br>
+                        <strong>Размер:</strong> {{ object.file_size_display }}<br>
+                        <strong>Тип:</strong> {{ object.get_media_type_display }}<br>
+                        <strong>Загружен:</strong> {{ object.created_at|date:"d.m.Y H:i" }}
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Внимание!</strong> Это действие нельзя отменить. Если файл используется в уроках, ссылки на него перестанут работать.
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'media_library' course.slug %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
