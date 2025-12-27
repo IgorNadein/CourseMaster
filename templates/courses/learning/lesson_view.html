@@ -683,23 +683,6 @@
                 {% endif %}
             </div>
             
-            {% else %}
-            <!-- ============================================================ -->
-            <!-- LEGACY CONTENT (старый формат без шагов) -->
-            <!-- ============================================================ -->
-            
-            <!-- Видео плеер -->
-            {% if lesson.lesson_type == 'video' and lesson.video_url %}
-            <div class="ratio ratio-16x9 bg-dark">
-                <iframe src="{{ lesson.video_url }}" allowfullscreen></iframe>
-            </div>
-            {% endif %}
-            
-            <!-- Контент урока (Markdown) -->
-            {% if lesson.content %}
-            <div class="p-4 lesson-content">
-                {{ lesson.content|markdown }}
-            </div>
             {% endif %}
 
             <!-- Мета-информация и действия -->
@@ -958,7 +941,7 @@
                             <a href="{% url 'lesson_view' less.id %}" 
                                class="text-decoration-none {% if less.id == lesson.id %}text-white{% else %}text-dark{% endif %} d-flex justify-content-between align-items-center">
                                 <div>
-                                    <i class="bi bi-{% if less.lesson_type == 'video' %}play-circle{% elif less.lesson_type == 'article' %}file-text{% elif less.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
+                                    <i class="bi bi-journal-text"></i>
                                     <small>{{ less.title }}</small>
                                 </div>
                                 {% if less.id == lesson.id %}<i class="bi bi-arrow-right"></i>{% endif %}

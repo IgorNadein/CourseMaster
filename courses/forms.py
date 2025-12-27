@@ -120,28 +120,17 @@ class SectionForm(forms.ModelForm):
 
 
 class LessonForm(forms.ModelForm):
-    """Форма создания/редактирования урока"""
+    """Форма создания/редактирования урока (контейнер для шагов)"""
     
     class Meta:
         model = Lesson
         fields = [
-            'title', 'lesson_type', 'content', 'video_url',
-            'duration_minutes', 'attachment', 'is_preview', 'order'
+            'title', 'duration_minutes', 'attachment', 'is_preview', 'order'
         ]
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Название урока'
-            }),
-            'lesson_type': forms.Select(attrs={'class': 'form-select'}),
-            'content': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 6,
-                'placeholder': 'Содержание урока или заметки'
-            }),
-            'video_url': forms.URLInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'https://youtube.com/...'
             }),
             'duration_minutes': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -156,9 +145,6 @@ class LessonForm(forms.ModelForm):
         }
         labels = {
             'title': 'Название урока',
-            'lesson_type': 'Тип урока',
-            'content': 'Содержание',
-            'video_url': 'Видео URL',
             'duration_minutes': 'Длительность (минуты)',
             'attachment': 'Материалы',
             'is_preview': 'Доступен для предпросмотра',

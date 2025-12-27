@@ -37,7 +37,6 @@ except Lesson.DoesNotExist:
     lesson = Lesson.objects.create(
         section=section,
         title='Test Lesson',
-        lesson_type='quiz',
         order=1
     )
 

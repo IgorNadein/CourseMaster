@@ -158,8 +158,8 @@
                                 <div class="lesson-drag-handle">
                                     <i class="bi bi-grip-vertical"></i>
                                 </div>
-                                <div class="lesson-icon {% if lesson.lesson_type == 'video' %}icon-video{% elif lesson.lesson_type == 'article' %}icon-article{% elif lesson.lesson_type == 'quiz' %}icon-quiz{% else %}icon-assignment{% endif %}">
-                                    <i class="bi bi-{% if lesson.lesson_type == 'video' %}play-circle{% elif lesson.lesson_type == 'article' %}file-text{% elif lesson.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
+                                <div class="lesson-icon icon-lesson">
+                                    <i class="bi bi-journal-text"></i>
                                 </div>
                                 <div class="lesson-info">
                                     <input type="text" 
@@ -168,37 +168,14 @@
                                            placeholder="Название урока"
                                            onchange="updateLesson({{ lesson.id }}, 'title', this.value)">
                                     <div class="lesson-meta">
-                                        <span class="lesson-type">{{ lesson.get_lesson_type_display }}</span>
+                                        <span class="lesson-steps-count">
+                                            <i class="bi bi-layers"></i> {{ lesson.steps.count }} шагов
+                                        </span>
                                         {% if lesson.duration_minutes > 0 %}
                                         <span class="lesson-duration">{{ lesson.duration_minutes }} мин</span>
                                         {% endif %}
                                         {% if lesson.is_preview %}
                                         <span class="lesson-preview-badge">Превью</span>
-                                        {% endif %}
-                                        
-                                        <!-- Статус теста/задания -->
-                                        {% if lesson.lesson_type == 'quiz' %}
-                                            {% if lesson.quiz %}
-                                            <span class="lesson-quiz-status status-ready">
-                                                <i class="bi bi-check-circle"></i> {{ lesson.quiz.questions.count }} вопросов
-                                            </span>
-                                            {% else %}
-                                            <span class="lesson-quiz-status status-pending">
-                                                <i class="bi bi-exclamation-triangle"></i> Нет теста
-                                            </span>
-                                            {% endif %}
-                                        {% endif %}
-                                        
-                                        {% if lesson.lesson_type == 'assignment' %}
-                                            {% if lesson.assignment %}
-                                            <span class="lesson-assignment-status status-ready">
-                                                <i class="bi bi-check-circle"></i> {{ lesson.assignment.max_points }} баллов
-                                            </span>
-                                            {% else %}
-                                            <span class="lesson-assignment-status status-pending">
-                                                <i class="bi bi-exclamation-triangle"></i> Нет задания
-                                            </span>
-                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -206,31 +183,9 @@
                                     <button type="button" class="btn btn-sm btn-link text-primary" onclick="openStepEditor({{ lesson.id }}, '{{ lesson.title|escapejs }}')" title="Редактор шагов">
                                         <i class="bi bi-list-ol"></i>
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-link" onclick="editLesson({{ lesson.id }})" title="Редактировать">
-                                        <i class="bi bi-pencil"></i>
+                                    <button type="button" class="btn btn-sm btn-link" onclick="editLesson({{ lesson.id }})" title="Настройки">
+                                        <i class="bi bi-gear"></i>
                                     </button>
-                                    {% if lesson.lesson_type == 'quiz' %}
-                                        {% if lesson.quiz %}
-                                        <a href="{% url 'quiz_builder' lesson.quiz.id %}" class="btn btn-sm btn-link text-info" title="Редактор теста">
-                                            <i class="bi bi-question-circle"></i>
-                                        </a>
-                                        {% else %}
-                                        <button type="button" class="btn btn-sm btn-link text-warning" onclick="createQuiz({{ lesson.id }})" title="Создать тест">
-                                            <i class="bi bi-plus-circle"></i>
-                                        </button>
-                                        {% endif %}
-                                    {% endif %}
-                                    {% if lesson.lesson_type == 'assignment' %}
-                                        {% if lesson.assignment %}
-                                        <button type="button" class="btn btn-sm btn-link text-success" onclick="editAssignment({{ lesson.assignment.id }})" title="Настройки задания">
-                                            <i class="bi bi-clipboard-check"></i>
-                                        </button>
-                                        {% else %}
-                                        <button type="button" class="btn btn-sm btn-link text-warning" onclick="createAssignment({{ lesson.id }})" title="Создать задание">
-                                            <i class="bi bi-plus-circle"></i>
-                                        </button>
-                                        {% endif %}
-                                    {% endif %}
                                     <button type="button" class="btn btn-sm btn-link text-danger" onclick="deleteLesson({{ lesson.id }})" title="Удалить">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -239,26 +194,12 @@
                             {% endfor %}
                         </div>
 
-                        <!-- Кнопка добавления урока -->
+                        <!-- Кнопка добавления урока (одна, без типов) -->
                         <div class="add-lesson-section">
-                            <div class="add-lesson-buttons">
-                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'video')">
-                                    <i class="bi bi-play-circle"></i>
-                                    <span>Видео</span>
-                                </button>
-                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'article')">
-                                    <i class="bi bi-file-text"></i>
-                                    <span>Статья</span>
-                                </button>
-                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'quiz')">
-                                    <i class="bi bi-question-circle"></i>
-                                    <span>Тест</span>
-                                </button>
-                                <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }}, 'assignment')">
-                                    <i class="bi bi-clipboard-check"></i>
-                                    <span>Задание</span>
-                                </button>
-                            </div>
+                            <button type="button" class="add-lesson-btn" onclick="addLesson({{ section.id }})">
+                                <i class="bi bi-plus-lg"></i>
+                                <span>Добавить урок</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -279,7 +220,7 @@
 
 <!-- Модальное окно редактирования урока -->
 <div class="modal fade" id="lessonEditModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -296,30 +237,10 @@
                         <input type="text" class="form-control" id="editLessonTitle" required>
                     </div>
                     
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Тип урока</label>
-                            <select class="form-select" id="editLessonType">
-                                <option value="video">Видео</option>
-                                <option value="article">Статья</option>
-                                <option value="quiz">Тест</option>
-                                <option value="assignment">Задание</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Длительность (минуты)</label>
-                            <input type="number" class="form-control" id="editLessonDuration" min="0">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3" id="videoUrlGroup">
-                        <label class="form-label">URL видео</label>
-                        <input type="url" class="form-control" id="editLessonVideoUrl" placeholder="https://youtube.com/...">
-                    </div>
-                    
                     <div class="mb-3">
-                        <label class="form-label">Содержание (Markdown)</label>
-                        <textarea class="form-control" id="editLessonContent" rows="8" placeholder="Содержание урока..."></textarea>
+                        <label class="form-label">Длительность (минуты)</label>
+                        <input type="number" class="form-control" id="editLessonDuration" min="0">
+                        <small class="text-muted">Примерное время прохождения урока</small>
                     </div>
                     
                     <div class="form-check mb-3">
@@ -738,14 +659,8 @@ async function editLesson(lessonId) {
         
         document.getElementById('editLessonId').value = lesson.id;
         document.getElementById('editLessonTitle').value = lesson.title;
-        document.getElementById('editLessonType').value = lesson.lesson_type;
         document.getElementById('editLessonDuration').value = lesson.duration_minutes || 0;
-        document.getElementById('editLessonVideoUrl').value = lesson.video_url || '';
-        document.getElementById('editLessonContent').value = lesson.content || '';
         document.getElementById('editLessonPreview').checked = lesson.is_preview;
-        
-        // Показать/скрыть поле URL видео
-        toggleVideoUrlField(lesson.lesson_type);
         
         // Открыть модальное окно
         const modal = new bootstrap.Modal(document.getElementById('lessonEditModal'));
@@ -755,25 +670,12 @@ async function editLesson(lessonId) {
     }
 }
 
-// Показать/скрыть поле URL видео
-function toggleVideoUrlField(lessonType) {
-    const group = document.getElementById('videoUrlGroup');
-    group.style.display = lessonType === 'video' ? 'block' : 'none';
-}
-
-document.getElementById('editLessonType').addEventListener('change', function() {
-    toggleVideoUrlField(this.value);
-});
-
 // Сохранить редактирование урока
 async function saveLessonEdit() {
     const lessonId = document.getElementById('editLessonId').value;
     const data = {
         title: document.getElementById('editLessonTitle').value,
-        lesson_type: document.getElementById('editLessonType').value,
         duration_minutes: parseInt(document.getElementById('editLessonDuration').value) || 0,
-        video_url: document.getElementById('editLessonVideoUrl').value,
-        content: document.getElementById('editLessonContent').value,
         is_preview: document.getElementById('editLessonPreview').checked
     };
     

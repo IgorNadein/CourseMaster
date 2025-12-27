@@ -121,44 +121,32 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <div>
-                                    <i class="bi bi-{% if lesson.lesson_type == 'video' %}play-circle{% elif lesson.lesson_type == 'article' %}file-text{% elif lesson.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
+                                    <i class="bi bi-journal-text"></i>
                                     <strong>{{ lesson.title }}</strong>
-                                    <span class="badge bg-secondary ms-2">{{ lesson.get_lesson_type_display }}</span>
+                                    <span class="badge bg-secondary ms-2">{{ lesson.steps.count }} шагов</span>
                                     {% if lesson.is_preview %}
                                     <span class="badge bg-info ms-1">Бесплатный просмотр</span>
                                     {% endif %}
                                 </div>
                                 <small class="text-muted ms-4 d-block mt-1">{{ lesson.duration_minutes }} мин</small>
                                 
-                                <!-- Информация о тесте -->
-                                {% if lesson.lesson_type == 'quiz' %}
-                                    {% if lesson.quiz %}
-                                    <small class="text-success d-block ms-4 mt-1">
-                                        <i class="bi bi-check-circle"></i> Тест: {{ lesson.quiz.questions.count }} вопросов, проходной балл {{ lesson.quiz.pass_percentage }}%
-                                        <a href="{% url 'quiz_builder' lesson.quiz.id %}" class="ms-2">Редактировать тест</a>
-                                    </small>
-                                    {% else %}
-                                    <small class="text-warning d-block ms-4 mt-1">
-                                        <i class="bi bi-exclamation-triangle"></i> Тест не настроен. <a href="{% url 'course_builder' course.slug %}">Открыть конструктор</a>
-                                    </small>
-                                    {% endif %}
+                                <!-- Информация о тесте (если есть шаги типа quiz) -->
+                                {% if lesson.quiz %}
+                                <small class="text-success d-block ms-4 mt-1">
+                                    <i class="bi bi-check-circle"></i> Тест: {{ lesson.quiz.questions.count }} вопросов, проходной балл {{ lesson.quiz.pass_percentage }}%
+                                    <a href="{% url 'quiz_builder' lesson.quiz.id %}" class="ms-2">Редактировать тест</a>
+                                </small>
                                 {% endif %}
                                 
-                                <!-- Информация о домашнем задании -->
-                                {% if lesson.lesson_type == 'assignment' %}
-                                    {% if lesson.assignment %}
-                                    <small class="text-success d-block ms-4 mt-1">
-                                        <i class="bi bi-check-circle"></i> Задание: {{ lesson.assignment.max_points }} баллов
-                                        {% if lesson.assignment.due_date %}
-                                        , дедлайн {{ lesson.assignment.due_date|date:"d.m.Y" }}
-                                        {% endif %}
-                                        <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="ms-2">Просмотр работ</a>
-                                    </small>
-                                    {% else %}
-                                    <small class="text-warning d-block ms-4 mt-1">
-                                        <i class="bi bi-exclamation-triangle"></i> Задание не настроено. <a href="{% url 'course_builder' course.slug %}">Открыть конструктор</a>
-                                    </small>
+                                <!-- Информация о домашнем задании (если есть) -->
+                                {% if lesson.assignment %}
+                                <small class="text-success d-block ms-4 mt-1">
+                                    <i class="bi bi-check-circle"></i> Задание: {{ lesson.assignment.max_points }} баллов
+                                    {% if lesson.assignment.due_date %}
+                                    , дедлайн {{ lesson.assignment.due_date|date:"d.m.Y" }}
                                     {% endif %}
+                                    <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="ms-2">Просмотр работ</a>
+                                </small>
                                 {% endif %}
                             </div>
                             <div class="btn-group" role="group">

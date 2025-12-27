@@ -135,25 +135,29 @@ class LessonModelTest(TestCase):
         lesson = Lesson.objects.create(
             section=self.section,
             title='Урок 1: Введение',
-            lesson_type='video',
             duration_minutes=30,
             order=1
         )
         self.assertEqual(lesson.title, 'Урок 1: Введение')
-        self.assertEqual(lesson.lesson_type, 'video')
         self.assertEqual(lesson.duration_minutes, 30)
     
-    def test_lesson_types(self):
-        """Тест различных типов уроков"""
-        types = ['video', 'article', 'quiz', 'assignment']
-        for i, lesson_type in enumerate(types, 1):
-            lesson = Lesson.objects.create(
-                section=self.section,
-                title=f'Lesson {lesson_type}',
-                lesson_type=lesson_type,
-                order=i
-            )
-            self.assertEqual(lesson.lesson_type, lesson_type)
+    def test_lesson_steps(self):
+        """Тест добавления шагов к уроку"""
+        from .models import Step
+        lesson = Lesson.objects.create(
+            section=self.section,
+            title='Урок со шагами',
+            order=1
+        )
+        step = Step.objects.create(
+            lesson=lesson,
+            step_type='text',
+            title='Введение',
+            order=0,
+            content={'html': '<p>Hello</p>'}
+        )
+        self.assertEqual(lesson.steps.count(), 1)
+        self.assertEqual(step.step_type, 'text')
 
 
 class EnrollmentModelTest(TestCase):
@@ -216,7 +220,6 @@ class QuizModelTest(TestCase):
         self.lesson = Lesson.objects.create(
             section=self.section, 
             title='Quiz Lesson', 
-            lesson_type='quiz',
             order=1
         )
     

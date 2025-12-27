@@ -590,10 +590,6 @@ class LessonCreateAjaxView(LoginRequiredMixin, View):
             return JsonResponse({'error': 'Неверный формат данных'}, status=400)
         
         title = data.get('title', 'Новый урок')
-        lesson_type = data.get('lesson_type', 'video')
-        
-        if lesson_type not in ['video', 'article', 'quiz', 'assignment']:
-            return JsonResponse({'error': 'Неверный тип урока'}, status=400)
         
         # Определить порядковый номер
         last_lesson = section.lessons.order_by('-order').first()
@@ -602,7 +598,6 @@ class LessonCreateAjaxView(LoginRequiredMixin, View):
         lesson = Lesson.objects.create(
             section=section,
             title=title,
-            lesson_type=lesson_type,
             order=order
         )
         
@@ -628,12 +623,10 @@ class LessonGetAjaxView(LoginRequiredMixin, View):
             'lesson': {
                 'id': lesson.id,
                 'title': lesson.title,
-                'lesson_type': lesson.lesson_type,
-                'content': lesson.content,
-                'video_url': lesson.video_url,
                 'duration_minutes': lesson.duration_minutes,
                 'is_preview': lesson.is_preview,
-                'order': lesson.order
+                'order': lesson.order,
+                'steps_count': lesson.steps.count()
             }
         })
 
@@ -653,15 +646,12 @@ class LessonUpdateAjaxView(LoginRequiredMixin, View):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Неверный формат данных'}, status=400)
         
-        allowed_fields = ['title', 'lesson_type', 'content', 'video_url', 
-                         'duration_minutes', 'is_preview', 'order']
+        # Разрешенные поля (без lesson_type, content, video_url - теперь в Step)
+        allowed_fields = ['title', 'duration_minutes', 'is_preview', 'order']
         
         for field, value in data.items():
             if field not in allowed_fields:
                 continue
-            
-            if field == 'lesson_type' and value not in ['video', 'article', 'quiz', 'assignment']:
-                return JsonResponse({'error': 'Неверный тип урока'}, status=400)
             
             if hasattr(lesson, field):
                 setattr(lesson, field, value)

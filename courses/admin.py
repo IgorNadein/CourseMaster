@@ -22,7 +22,7 @@ class SectionInline(admin.TabularInline):
 class LessonInline(admin.TabularInline):
     model = Lesson
     extra = 1
-    fields = ['title', 'lesson_type', 'order', 'duration_minutes', 'is_preview']
+    fields = ['title', 'order', 'duration_minutes', 'is_preview']
 
 
 @admin.register(Course)
@@ -69,9 +69,14 @@ class SectionAdmin(admin.ModelAdmin):
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ['title', 'section', 'lesson_type', 'order', 'duration_minutes', 'is_preview']
-    list_filter = ['lesson_type', 'is_preview', 'section__course']
+    list_display = ['title', 'section', 'order', 'duration_minutes', 'is_preview', 'steps_count']
+    list_filter = ['is_preview', 'section__course']
     search_fields = ['title', 'section__title']
+    inlines = []  # TODO: Добавить StepInline
+    
+    def steps_count(self, obj):
+        return obj.steps.count()
+    steps_count.short_description = 'Шагов'
 
 
 @admin.register(Enrollment)

@@ -111,7 +111,6 @@ class CourseDetailViewTest(TestCase):
         self.lesson = Lesson.objects.create(
             section=self.section,
             title='Урок 1',
-            lesson_type='video',
             order=1
         )
     

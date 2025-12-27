@@ -103,13 +103,7 @@
                             {% if is_enrolled or lesson.is_preview %}
                             <a href="{% url 'lesson_view' lesson.id %}" class="course-lesson-link">
                                 <span>
-                                    <span class="course-lesson-icon">
-                                        {% if lesson.lesson_type == 'video' %}🎥
-                                        {% elif lesson.lesson_type == 'article' %}📄
-                                        {% elif lesson.lesson_type == 'quiz' %}❓
-                                        {% elif lesson.lesson_type == 'assignment' %}✏️
-                                        {% endif %}
-                                    </span>
+                                    <span class="course-lesson-icon">📚</span>
                                     {{ lesson.title }}
                                     {% if lesson.is_preview %}<span class="badge badge-free">Превью</span>{% endif %}
                                 </span>

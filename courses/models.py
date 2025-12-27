@@ -146,21 +146,15 @@ class Section(models.Model):
 
 
 class Lesson(models.Model):
-    LESSON_TYPE_CHOICES = [
-        ('video', 'Видео'),
-        ('article', 'Статья'),
-        ('quiz', 'Тест'),
-        ('assignment', 'Задание'),
-    ]
-    
+    """
+    Урок - контейнер для шагов (Step).
+    Как в Stepik: урок не имеет типа, весь контент находится в шагах.
+    """
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=200)
-    lesson_type = models.CharField(max_length=20, choices=LESSON_TYPE_CHOICES, default='video')
     order = models.PositiveIntegerField(default=0)
     
-    # Content
-    content = models.TextField(blank=True, help_text="Article content or lesson notes")
-    video_url = models.URLField(blank=True, help_text="Video URL (YouTube, Vimeo, etc.)")
+    # Длительность (вычисляется из шагов или задаётся вручную)
     duration_minutes = models.PositiveIntegerField(default=0, help_text="Lesson duration in minutes")
     
     # Resources
@@ -178,6 +172,19 @@ class Lesson(models.Model):
     
     def __str__(self):
         return f"{self.section.title} - {self.title}"
+    
+    @property
+    def steps_count(self):
+        """Количество шагов в уроке"""
+        return self.steps.count()
+    
+    @property
+    def has_interactive_steps(self):
+        """Есть ли интерактивные шаги (требующие ответа)"""
+        return self.steps.filter(step_type__in=[
+            'quiz_single', 'quiz_multiple', 'quiz_sorting', 'quiz_matching',
+            'fill_blanks', 'numeric', 'text_answer', 'free_answer', 'code', 'sql'
+        ]).exists()
 
 
 # ============================================================
