@@ -148,7 +148,7 @@ class Section(models.Model):
 class Lesson(models.Model):
     """
     Урок - контейнер для шагов (Step).
-    Как в Stepik: урок не имеет типа, весь контент находится в шагах.
+    Урок не имеет типа, весь контент находится в шагах.
     """
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=200)
@@ -188,14 +188,14 @@ class Lesson(models.Model):
 
 
 # ============================================================
-# STEP MODEL (Шаги урока - как в Stepik)
+# STEP MODEL (Шаги урока)
 # ============================================================
 
 class Step(models.Model):
     """
     Шаг урока - атомарная единица контента.
     Урок может содержать несколько шагов разных типов.
-    Структура как в Stepik: Курс → Модуль → Урок → Шаг
+    Структура: Курс → Модуль → Урок → Шаг
     """
     STEP_TYPE_CHOICES = [
         # Контентные типы

@@ -67,7 +67,7 @@ urlpatterns = [
     path('api/assignment/<int:assignment_id>/', views.AssignmentGetAjaxView.as_view(), name='api_assignment_get'),
     path('api/assignment/<int:assignment_id>/update/', views.AssignmentUpdateAjaxView.as_view(), name='api_assignment_update'),
     
-    # AJAX API для Step (Stepik-style шаги уроков)
+    # AJAX API для Step (шаги уроков)
     path('api/lesson/<int:lesson_id>/steps/', views.StepListAjaxView.as_view(), name='api_step_list'),
     path('api/lesson/<int:lesson_id>/step/create/', views.StepCreateAjaxView.as_view(), name='api_step_create'),
     path('api/lesson/<int:lesson_id>/steps/reorder/', views.StepReorderAjaxView.as_view(), name='api_step_reorder'),

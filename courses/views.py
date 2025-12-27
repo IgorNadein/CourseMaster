@@ -34,7 +34,7 @@ from .ajax_views import (
     QuizCreateAjaxView, AssignmentCreateAjaxView, AssignmentGetAjaxView, AssignmentUpdateAjaxView
 )
 
-# Импорт AJAX views для Step (Stepik-style шаги)
+# Импорт AJAX views для Step (шаги уроков)
 from .ajax_views import (
     StepListAjaxView, StepCreateAjaxView, StepGetAjaxView, StepUpdateAjaxView,
     StepDeleteAjaxView, StepReorderAjaxView, StepDuplicateAjaxView,
@@ -303,7 +303,7 @@ class LessonView(LoginRequiredMixin, DetailView):
             'section__course__instructor'
         ).prefetch_related(
             'section__lessons',
-            'steps'  # Prefetch steps for Stepik-style lessons
+            'steps'  # Prefetch steps for Step-based lessons
         )
     
     def get_context_data(self, **kwargs):
@@ -358,7 +358,7 @@ class LessonView(LoginRequiredMixin, DetailView):
             context['enrollment'] = enrollment
         
         # ============================================================
-        # STEP-BASED CONTENT (Stepik-style)
+        # STEP-BASED CONTENT (Шаги урока)
         # ============================================================
         steps = lesson.steps.all().order_by('order')
         context['steps'] = steps

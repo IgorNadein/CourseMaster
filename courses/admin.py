@@ -389,7 +389,7 @@ class CourseMediaAdmin(admin.ModelAdmin):
 
 
 # ============================================================
-# STEP ADMIN (Шаги уроков - Stepik-style)
+# STEP ADMIN (Шаги уроков)
 # ============================================================
 
 class StepInline(admin.TabularInline):

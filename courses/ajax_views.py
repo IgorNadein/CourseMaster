@@ -804,7 +804,7 @@ class AssignmentUpdateAjaxView(LoginRequiredMixin, View):
 
 
 # ============================================================
-# STEP AJAX VIEWS (Шаги уроков - Stepik-style)
+# STEP AJAX VIEWS (Шаги уроков)
 # ============================================================
 
 from .models import Step

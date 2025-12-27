@@ -21,7 +21,7 @@ from courses.models import (
 
 
 class Command(BaseCommand):
-    help = 'Мигрирует существующие уроки в Step-формат (Stepik-style)'
+    help = 'Мигрирует существующие уроки в Step-формат'
     
     def add_arguments(self, parser):
         parser.add_argument(
