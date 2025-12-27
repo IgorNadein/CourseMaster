@@ -38,7 +38,32 @@ urlpatterns = [
     # Тесты (Преподаватели)
     path('instructor/lesson/<int:lesson_id>/quiz/create/', views.InstructorQuizCreateView.as_view(), name='quiz_create'),
     path('instructor/quiz/<int:quiz_id>/', views.InstructorQuizDetailView.as_view(), name='instructor_quiz_detail'),
-    path('instructor/quiz/<int:quiz_id>/question/create/', views.QuestionCreateView.as_view(), name='question_create'),
+    path('instructor/quiz/<int:quiz_id>/builder/', views.QuizBuilderView.as_view(), name='quiz_builder'),
+    # Старые URLs для Question/Choice УДАЛЕНЫ - теперь используется AJAX API
+    
+    # AJAX API для quiz builder (auto-save)
+    path('api/quiz/<int:quiz_id>/update/', views.QuizUpdateAjaxView.as_view(), name='api_quiz_update'),
+    path('api/quiz/<int:quiz_id>/question/create/', views.QuestionCreateAjaxView.as_view(), name='api_question_create'),
+    path('api/question/<int:question_id>/update/', views.QuestionUpdateAjaxView.as_view(), name='api_question_update'),
+    path('api/question/<int:question_id>/delete/', views.QuestionDeleteAjaxView.as_view(), name='api_question_delete'),
+    path('api/question/<int:question_id>/duplicate/', views.QuestionDuplicateAjaxView.as_view(), name='api_question_duplicate'),
+    path('api/question/<int:question_id>/choice/create/', views.ChoiceCreateAjaxView.as_view(), name='api_choice_create'),
+    path('api/choice/<int:choice_id>/update/', views.ChoiceUpdateAjaxView.as_view(), name='api_choice_update'),
+    path('api/choice/<int:choice_id>/delete/', views.ChoiceDeleteAjaxView.as_view(), name='api_choice_delete'),
+    
+    # AJAX API для course builder
+    path('api/course/<int:course_id>/update/', views.CourseUpdateAjaxView.as_view(), name='api_course_update'),
+    path('api/course/<int:course_id>/publish/', views.CoursePublishAjaxView.as_view(), name='api_course_publish'),
+    path('api/course/<int:course_id>/unpublish/', views.CourseUnpublishAjaxView.as_view(), name='api_course_unpublish'),
+    path('api/course/<int:course_id>/section/create/', views.SectionCreateAjaxView.as_view(), name='api_section_create'),
+    path('api/section/<int:section_id>/update/', views.SectionUpdateAjaxView.as_view(), name='api_section_update'),
+    path('api/section/<int:section_id>/delete/', views.SectionDeleteAjaxView.as_view(), name='api_section_delete'),
+    path('api/section/<int:section_id>/lesson/create/', views.LessonCreateAjaxView.as_view(), name='api_lesson_create'),
+    path('api/lesson/<int:lesson_id>/', views.LessonGetAjaxView.as_view(), name='api_lesson_get'),
+    path('api/lesson/<int:lesson_id>/update/', views.LessonUpdateAjaxView.as_view(), name='api_lesson_update'),
+    path('api/lesson/<int:lesson_id>/delete/', views.LessonDeleteAjaxView.as_view(), name='api_lesson_delete'),
+    path('api/lesson/<int:lesson_id>/quiz/create/', views.QuizCreateAjaxView.as_view(), name='api_quiz_create'),
+    path('api/lesson/<int:lesson_id>/assignment/create/', views.AssignmentCreateAjaxView.as_view(), name='api_assignment_create'),
     
     # Домашние задания (Студенты)
     path('assignment/<int:assignment_id>/submit/', views.AssignmentSubmitView.as_view(), name='assignment_submit'),
@@ -47,20 +72,12 @@ urlpatterns = [
     path('instructor/', views.InstructorCoursesView.as_view(), name='instructor_courses'),
     path('instructor/course/create/', views.CourseCreateView.as_view(), name='course_create'),
     path('instructor/course/<slug:slug>/', views.InstructorCourseDetailView.as_view(), name='instructor_course_detail'),
+    path('instructor/course/<slug:slug>/builder/', views.CourseBuilderView.as_view(), name='course_builder'),
     path('instructor/course/<slug:slug>/edit/', views.CourseUpdateView.as_view(), name='course_update'),
     path('instructor/course/<slug:slug>/delete/', views.CourseDeleteView.as_view(), name='course_delete'),
     path('instructor/course/<slug:slug>/publish/', views.CoursePublishView.as_view(), name='course_publish'),
     path('instructor/course/<slug:slug>/unpublish/', views.CourseUnpublishView.as_view(), name='course_unpublish'),
-    
-    # Преподаватель - Разделы
-    path('instructor/course/<slug:course_slug>/section/create/', views.SectionCreateView.as_view(), name='section_create'),
-    path('instructor/section/<int:section_id>/edit/', views.SectionUpdateView.as_view(), name='section_update'),
-    path('instructor/section/<int:section_id>/delete/', views.SectionDeleteView.as_view(), name='section_delete'),
-    
-    # Преподаватель - Уроки
-    path('instructor/section/<int:section_id>/lesson/create/', views.LessonCreateView.as_view(), name='lesson_create'),
-    path('instructor/lesson/<int:lesson_id>/edit/', views.LessonUpdateView.as_view(), name='lesson_update'),
-    path('instructor/lesson/<int:lesson_id>/delete/', views.LessonDeleteView.as_view(), name='lesson_delete'),
+    # Старые URLs для Section/Lesson УДАЛЕНЫ - теперь используется AJAX API в CourseBuilder
     
     # Медиа-библиотека (Преподаватели)
     path('instructor/course/<slug:slug>/media/', views.MediaLibraryView.as_view(), name='media_library'),
