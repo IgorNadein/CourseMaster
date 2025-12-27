@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.views.generic import View, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.utils import timezone
+from django.db import models
 from .models import Quiz, Question, QuestionChoice, Course, Section, Lesson, Assignment, Category
 
 
@@ -811,3 +812,316 @@ class AssignmentUpdateAjaxView(LoginRequiredMixin, View):
             }
         })
 
+
+# ============================================================
+# STEP AJAX VIEWS (Шаги уроков - Stepik-style)
+# ============================================================
+
+from .models import Step
+
+
+class StepListAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Получить список шагов урока
+    """
+    def get(self, request, lesson_id):
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        
+        # Проверка прав доступа
+        if lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        steps = lesson.steps.all().order_by('order')
+        
+        return JsonResponse({
+            'success': True,
+            'steps': [{
+                'id': step.id,
+                'step_type': step.step_type,
+                'step_type_display': step.get_step_type_display(),
+                'title': step.title,
+                'order': step.order,
+                'points': step.points,
+                'is_required': step.is_required,
+                'content': step.content,
+            } for step in steps]
+        })
+
+
+class StepCreateAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Создать новый шаг в уроке
+    """
+    def post(self, request, lesson_id):
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        
+        # Проверка прав доступа
+        if lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        step_type = data.get('step_type', 'text')
+        title = data.get('title', '')
+        
+        # Валидация типа шага
+        valid_types = [choice[0] for choice in Step.STEP_TYPE_CHOICES]
+        if step_type not in valid_types:
+            return JsonResponse({'error': f'Неверный тип шага: {step_type}'}, status=400)
+        
+        # Определить order (следующий после максимального)
+        max_order = lesson.steps.aggregate(max_order=models.Max('order'))['max_order']
+        order = (max_order or -1) + 1
+        
+        # Создать шаг с дефолтным контентом
+        default_content = self._get_default_content(step_type)
+        
+        step = Step.objects.create(
+            lesson=lesson,
+            step_type=step_type,
+            title=title,
+            order=order,
+            content=default_content
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'step': {
+                'id': step.id,
+                'step_type': step.step_type,
+                'step_type_display': step.get_step_type_display(),
+                'title': step.title,
+                'order': step.order,
+                'points': step.points,
+                'is_required': step.is_required,
+                'content': step.content,
+            }
+        })
+    
+    def _get_default_content(self, step_type):
+        """Дефолтный контент для разных типов шагов"""
+        defaults = {
+            'text': {'markdown': '', 'html': ''},
+            'video': {'url': '', 'duration': 0, 'source': 'youtube'},
+            'quiz_single': {
+                'question': 'Введите вопрос...',
+                'choices': ['Вариант 1', 'Вариант 2', 'Вариант 3'],
+                'correct_index': 0,
+                'explanation': ''
+            },
+            'quiz_multiple': {
+                'question': 'Введите вопрос...',
+                'choices': ['Вариант 1', 'Вариант 2', 'Вариант 3'],
+                'correct_indexes': [0],
+                'explanation': ''
+            },
+            'quiz_sorting': {
+                'instruction': 'Расположите элементы в правильном порядке',
+                'items': ['Элемент 1', 'Элемент 2', 'Элемент 3'],
+                'correct_order': [0, 1, 2]
+            },
+            'quiz_matching': {
+                'instruction': 'Сопоставьте элементы',
+                'left': ['Левый 1', 'Левый 2'],
+                'right': ['Правый 1', 'Правый 2'],
+                'pairs': [[0, 0], [1, 1]]
+            },
+            'fill_blanks': {
+                'text_with_blanks': 'Python — это {{}} язык программирования',
+                'answers': ['интерпретируемый']
+            },
+            'numeric': {
+                'question': 'Введите числовой вопрос...',
+                'answer': 0,
+                'tolerance': 0
+            },
+            'text_answer': {
+                'question': 'Введите вопрос...',
+                'patterns': [],
+                'case_sensitive': False
+            },
+            'free_answer': {
+                'question': 'Напишите эссе на тему...',
+                'min_length': 100,
+                'rubric': ''
+            },
+            'code': {
+                'language': 'python',
+                'description': 'Описание задачи...',
+                'template': '# Ваш код здесь\n',
+                'tests': [],
+                'time_limit': 5
+            },
+            'sql': {
+                'description': 'Описание SQL-задачи...',
+                'database_schema': '',
+                'expected_query': '',
+                'expected_result': []
+            }
+        }
+        return defaults.get(step_type, {})
+
+
+class StepGetAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Получить данные шага
+    """
+    def get(self, request, step_id):
+        step = get_object_or_404(Step, id=step_id)
+        
+        # Проверка прав доступа
+        if step.lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        return JsonResponse({
+            'success': True,
+            'step': {
+                'id': step.id,
+                'step_type': step.step_type,
+                'step_type_display': step.get_step_type_display(),
+                'title': step.title,
+                'order': step.order,
+                'points': step.points,
+                'is_required': step.is_required,
+                'content': step.content,
+            }
+        })
+
+
+class StepUpdateAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Обновить шаг
+    """
+    def post(self, request, step_id):
+        step = get_object_or_404(Step, id=step_id)
+        
+        # Проверка прав доступа
+        if step.lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        # Обновить поля
+        if 'title' in data:
+            step.title = data['title']
+        if 'step_type' in data:
+            valid_types = [choice[0] for choice in Step.STEP_TYPE_CHOICES]
+            if data['step_type'] in valid_types:
+                step.step_type = data['step_type']
+        if 'points' in data:
+            step.points = int(data['points'])
+        if 'is_required' in data:
+            step.is_required = bool(data['is_required'])
+        if 'content' in data:
+            step.content = data['content']
+        
+        step.save()
+        
+        return JsonResponse({
+            'success': True,
+            'step': {
+                'id': step.id,
+                'step_type': step.step_type,
+                'step_type_display': step.get_step_type_display(),
+                'title': step.title,
+                'order': step.order,
+                'points': step.points,
+                'is_required': step.is_required,
+                'content': step.content,
+            }
+        })
+
+
+class StepDeleteAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Удалить шаг
+    """
+    def post(self, request, step_id):
+        step = get_object_or_404(Step, id=step_id)
+        
+        # Проверка прав доступа
+        if step.lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        step_title = step.title or f'Шаг {step.order + 1}'
+        step.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Шаг "{step_title}" удален'
+        })
+
+
+class StepReorderAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Изменить порядок шагов в уроке
+    """
+    def post(self, request, lesson_id):
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+        
+        # Проверка прав доступа
+        if lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        step_ids = data.get('step_ids', [])
+        
+        # Обновить порядок
+        for index, step_id in enumerate(step_ids):
+            Step.objects.filter(id=step_id, lesson=lesson).update(order=index)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Порядок шагов обновлен'
+        })
+
+
+class StepDuplicateAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Дублировать шаг
+    """
+    def post(self, request, step_id):
+        step = get_object_or_404(Step, id=step_id)
+        
+        # Проверка прав доступа
+        if step.lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        # Определить order для копии
+        max_order = step.lesson.steps.aggregate(max_order=models.Max('order'))['max_order']
+        new_order = (max_order or 0) + 1
+        
+        # Создать копию
+        new_step = Step.objects.create(
+            lesson=step.lesson,
+            step_type=step.step_type,
+            title=f'{step.title} (копия)' if step.title else '',
+            order=new_order,
+            points=step.points,
+            is_required=step.is_required,
+            content=step.content.copy() if isinstance(step.content, dict) else step.content
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'step': {
+                'id': new_step.id,
+                'step_type': new_step.step_type,
+                'step_type_display': new_step.get_step_type_display(),
+                'title': new_step.title,
+                'order': new_step.order,
+                'points': new_step.points,
+                'is_required': new_step.is_required,
+                'content': new_step.content,
+            }
+        })

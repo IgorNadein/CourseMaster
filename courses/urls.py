@@ -67,6 +67,15 @@ urlpatterns = [
     path('api/assignment/<int:assignment_id>/', views.AssignmentGetAjaxView.as_view(), name='api_assignment_get'),
     path('api/assignment/<int:assignment_id>/update/', views.AssignmentUpdateAjaxView.as_view(), name='api_assignment_update'),
     
+    # AJAX API для Step (Stepik-style шаги уроков)
+    path('api/lesson/<int:lesson_id>/steps/', views.StepListAjaxView.as_view(), name='api_step_list'),
+    path('api/lesson/<int:lesson_id>/step/create/', views.StepCreateAjaxView.as_view(), name='api_step_create'),
+    path('api/lesson/<int:lesson_id>/steps/reorder/', views.StepReorderAjaxView.as_view(), name='api_step_reorder'),
+    path('api/step/<int:step_id>/', views.StepGetAjaxView.as_view(), name='api_step_get'),
+    path('api/step/<int:step_id>/update/', views.StepUpdateAjaxView.as_view(), name='api_step_update'),
+    path('api/step/<int:step_id>/delete/', views.StepDeleteAjaxView.as_view(), name='api_step_delete'),
+    path('api/step/<int:step_id>/duplicate/', views.StepDuplicateAjaxView.as_view(), name='api_step_duplicate'),
+    
     # Домашние задания (Студенты)
     path('assignment/<int:assignment_id>/submit/', views.AssignmentSubmitView.as_view(), name='assignment_submit'),
     

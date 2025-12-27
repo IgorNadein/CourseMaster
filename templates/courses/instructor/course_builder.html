@@ -203,6 +203,9 @@
                                     </div>
                                 </div>
                                 <div class="lesson-actions">
+                                    <button type="button" class="btn btn-sm btn-link text-primary" onclick="openStepEditor({{ lesson.id }}, '{{ lesson.title|escapejs }}')" title="Редактор шагов">
+                                        <i class="bi bi-list-ol"></i>
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-link" onclick="editLesson({{ lesson.id }})" title="Редактировать">
                                         <i class="bi bi-pencil"></i>
                                     </button>
@@ -495,6 +498,74 @@
                 <button type="button" class="btn btn-primary" onclick="saveAssignment()">
                     <i class="bi bi-check-lg"></i> Сохранить
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактора шагов (Step Editor) -->
+<div class="modal fade" id="stepEditorModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-list-ol"></i> Редактор шагов: <span id="stepEditorLessonTitle"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="step-editor">
+                    <!-- Левая панель - список шагов -->
+                    <div class="step-sidebar">
+                        <div class="step-sidebar-header">
+                            <h6><i class="bi bi-layers"></i> Шаги урока</h6>
+                        </div>
+                        <div id="stepsList" class="steps-list">
+                            <!-- Шаги загружаются динамически -->
+                        </div>
+                        
+                        <!-- Меню добавления шага -->
+                        <div class="add-step-menu">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-primary btn-sm w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-plus-lg"></i> Добавить шаг
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    <li><h6 class="dropdown-header">Контент</h6></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('text')"><i class="bi bi-file-text"></i> Текст/Теория</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('video')"><i class="bi bi-play-circle"></i> Видео</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Тесты</h6></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('quiz_single')"><i class="bi bi-ui-radios"></i> Один ответ</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('quiz_multiple')"><i class="bi bi-ui-checks"></i> Несколько ответов</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('quiz_sorting')"><i class="bi bi-sort-numeric-down"></i> Сортировка</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('quiz_matching')"><i class="bi bi-arrows"></i> Сопоставление</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('fill_blanks')"><i class="bi bi-input-cursor-text"></i> Пропуски</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Ответы</h6></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('numeric')"><i class="bi bi-123"></i> Числовой</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('text_answer')"><i class="bi bi-cursor-text"></i> Текстовый</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('free_answer')"><i class="bi bi-pencil-square"></i> Эссе</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Программирование</h6></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('code')"><i class="bi bi-code-slash"></i> Код</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="addStep('sql')"><i class="bi bi-database"></i> SQL</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Правая панель - редактор шага -->
+                    <div class="step-content">
+                        <div id="stepEditorPlaceholder" class="step-placeholder">
+                            <i class="bi bi-arrow-left-circle"></i>
+                            <p>Выберите шаг слева или добавьте новый</p>
+                        </div>
+                        <div id="stepEditorContent" class="step-editor-content" style="display: none;">
+                            <!-- Редактор шага загружается динамически -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -939,5 +1010,537 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// ============================================================
+// РЕДАКТОР ШАГОВ (STEP EDITOR)
+// ============================================================
+
+let currentLessonId = null;
+let currentStepId = null;
+let stepsData = [];
+
+// Открыть редактор шагов для урока
+async function openStepEditor(lessonId, lessonTitle) {
+    currentLessonId = lessonId;
+    currentStepId = null;
+    
+    document.getElementById('stepEditorLessonTitle').textContent = lessonTitle;
+    
+    // Загрузить шаги
+    await loadSteps();
+    
+    // Показать плейсхолдер
+    document.getElementById('stepEditorPlaceholder').style.display = 'flex';
+    document.getElementById('stepEditorContent').style.display = 'none';
+    
+    // Открыть модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('stepEditorModal'));
+    modal.show();
+}
+
+// Загрузить список шагов
+async function loadSteps() {
+    const result = await apiRequest(`/courses/api/lesson/${currentLessonId}/steps/`, 'GET');
+    
+    if (result.success) {
+        stepsData = result.steps;
+        renderStepsList();
+    }
+}
+
+// Отрисовать список шагов
+function renderStepsList() {
+    const container = document.getElementById('stepsList');
+    
+    if (stepsData.length === 0) {
+        container.innerHTML = `
+            <div class="empty-steps">
+                <i class="bi bi-inbox"></i>
+                <p>Нет шагов</p>
+                <small>Добавьте первый шаг</small>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = stepsData.map((step, index) => `
+        <div class="step-item ${currentStepId === step.id ? 'active' : ''}" 
+             onclick="selectStep(${step.id})" 
+             data-step-id="${step.id}">
+            <div class="step-item-order">${index + 1}</div>
+            <div class="step-item-info">
+                <div class="step-item-type">${getStepTypeIcon(step.step_type)} ${step.step_type_display}</div>
+                <div class="step-item-title">${step.title || 'Без названия'}</div>
+            </div>
+            <div class="step-item-actions">
+                <button class="btn btn-sm btn-link" onclick="event.stopPropagation(); duplicateStep(${step.id})" title="Дублировать">
+                    <i class="bi bi-copy"></i>
+                </button>
+                <button class="btn btn-sm btn-link text-danger" onclick="event.stopPropagation(); deleteStep(${step.id})" title="Удалить">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Иконка типа шага
+function getStepTypeIcon(stepType) {
+    const icons = {
+        'text': '<i class="bi bi-file-text"></i>',
+        'video': '<i class="bi bi-play-circle"></i>',
+        'quiz_single': '<i class="bi bi-ui-radios"></i>',
+        'quiz_multiple': '<i class="bi bi-ui-checks"></i>',
+        'quiz_sorting': '<i class="bi bi-sort-numeric-down"></i>',
+        'quiz_matching': '<i class="bi bi-arrows"></i>',
+        'fill_blanks': '<i class="bi bi-input-cursor-text"></i>',
+        'numeric': '<i class="bi bi-123"></i>',
+        'text_answer': '<i class="bi bi-cursor-text"></i>',
+        'free_answer': '<i class="bi bi-pencil-square"></i>',
+        'code': '<i class="bi bi-code-slash"></i>',
+        'sql': '<i class="bi bi-database"></i>'
+    };
+    return icons[stepType] || '<i class="bi bi-circle"></i>';
+}
+
+// Добавить шаг
+async function addStep(stepType) {
+    const result = await apiRequest(`/courses/api/lesson/${currentLessonId}/step/create/`, 'POST', {
+        step_type: stepType,
+        title: ''
+    });
+    
+    if (result.success) {
+        stepsData.push(result.step);
+        renderStepsList();
+        selectStep(result.step.id);
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось создать шаг'));
+    }
+}
+
+// Выбрать шаг для редактирования
+async function selectStep(stepId) {
+    currentStepId = stepId;
+    
+    // Обновить активный элемент в списке
+    document.querySelectorAll('.step-item').forEach(item => {
+        item.classList.toggle('active', parseInt(item.dataset.stepId) === stepId);
+    });
+    
+    // Загрузить данные шага
+    const result = await apiRequest(`/courses/api/step/${stepId}/`, 'GET');
+    
+    if (result.success) {
+        renderStepEditor(result.step);
+    }
+}
+
+// Отрисовать редактор шага
+function renderStepEditor(step) {
+    document.getElementById('stepEditorPlaceholder').style.display = 'none';
+    document.getElementById('stepEditorContent').style.display = 'block';
+    
+    const container = document.getElementById('stepEditorContent');
+    
+    let editorHtml = `
+        <div class="step-editor-header">
+            <div class="step-type-badge">${getStepTypeIcon(step.step_type)} ${step.step_type_display}</div>
+            <div class="step-settings">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="stepRequired" 
+                           ${step.is_required ? 'checked' : ''} onchange="updateStepField('is_required', this.checked)">
+                    <label class="form-check-label" for="stepRequired">Обязательный</label>
+                </div>
+                <div class="points-input">
+                    <label>Баллы:</label>
+                    <input type="number" class="form-control form-control-sm" id="stepPoints" 
+                           value="${step.points}" min="0" onchange="updateStepField('points', parseInt(this.value))">
+                </div>
+            </div>
+        </div>
+        
+        <div class="step-editor-body">
+            <div class="mb-3">
+                <label class="form-label">Название шага (опционально)</label>
+                <input type="text" class="form-control" id="stepTitle" value="${step.title || ''}" 
+                       placeholder="Введите название..." onchange="updateStepField('title', this.value)">
+            </div>
+            
+            ${getStepContentEditor(step)}
+        </div>
+    `;
+    
+    container.innerHTML = editorHtml;
+}
+
+// Получить редактор контента для типа шага
+function getStepContentEditor(step) {
+    const content = step.content || {};
+    
+    switch (step.step_type) {
+        case 'text':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Содержание (Markdown)</label>
+                    <textarea class="form-control" id="stepContentMarkdown" rows="15" 
+                              placeholder="# Заголовок\n\nТекст урока..."
+                              onchange="updateStepContent('markdown', this.value)">${content.markdown || ''}</textarea>
+                    <small class="text-muted">Поддерживается Markdown синтаксис</small>
+                </div>
+            `;
+        
+        case 'video':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">URL видео</label>
+                    <input type="url" class="form-control" id="stepContentVideoUrl" 
+                           value="${content.url || ''}" placeholder="https://youtube.com/watch?v=..."
+                           onchange="updateStepContent('url', this.value)">
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Источник</label>
+                        <select class="form-select" id="stepContentVideoSource" onchange="updateStepContent('source', this.value)">
+                            <option value="youtube" ${content.source === 'youtube' ? 'selected' : ''}>YouTube</option>
+                            <option value="vimeo" ${content.source === 'vimeo' ? 'selected' : ''}>Vimeo</option>
+                            <option value="rutube" ${content.source === 'rutube' ? 'selected' : ''}>Rutube</option>
+                            <option value="other" ${content.source === 'other' ? 'selected' : ''}>Другое</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Длительность (сек)</label>
+                        <input type="number" class="form-control" id="stepContentDuration" 
+                               value="${content.duration || 0}" min="0"
+                               onchange="updateStepContent('duration', parseInt(this.value))">
+                    </div>
+                </div>
+            `;
+        
+        case 'quiz_single':
+        case 'quiz_multiple':
+            const isMultiple = step.step_type === 'quiz_multiple';
+            const choices = content.choices || ['Вариант 1', 'Вариант 2'];
+            const correctIndex = content.correct_index ?? 0;
+            const correctIndexes = content.correct_indexes || [0];
+            
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Вопрос</label>
+                    <textarea class="form-control" id="stepContentQuestion" rows="3"
+                              placeholder="Введите вопрос..."
+                              onchange="updateStepContent('question', this.value)">${content.question || ''}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Варианты ответов</label>
+                    <div id="choicesContainer">
+                        ${choices.map((choice, i) => `
+                            <div class="choice-item d-flex gap-2 mb-2">
+                                <input type="${isMultiple ? 'checkbox' : 'radio'}" class="form-check-input mt-2"
+                                       name="correctChoice" value="${i}"
+                                       ${isMultiple ? (correctIndexes.includes(i) ? 'checked' : '') : (correctIndex === i ? 'checked' : '')}
+                                       onchange="updateCorrectAnswer(${i}, this.checked)">
+                                <input type="text" class="form-control" value="${choice}"
+                                       placeholder="Вариант ${i + 1}"
+                                       onchange="updateChoice(${i}, this.value)">
+                                <button class="btn btn-outline-danger btn-sm" onclick="removeChoice(${i})" ${choices.length <= 2 ? 'disabled' : ''}>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="addChoice()">
+                        <i class="bi bi-plus"></i> Добавить вариант
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Пояснение (показывается после ответа)</label>
+                    <textarea class="form-control" id="stepContentExplanation" rows="2"
+                              placeholder="Пояснение к правильному ответу..."
+                              onchange="updateStepContent('explanation', this.value)">${content.explanation || ''}</textarea>
+                </div>
+            `;
+        
+        case 'numeric':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Вопрос</label>
+                    <textarea class="form-control" id="stepContentQuestion" rows="3"
+                              placeholder="Введите вопрос..."
+                              onchange="updateStepContent('question', this.value)">${content.question || ''}</textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Правильный ответ</label>
+                        <input type="number" class="form-control" id="stepContentAnswer" 
+                               value="${content.answer ?? 0}" step="any"
+                               onchange="updateStepContent('answer', parseFloat(this.value))">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Допустимая погрешность</label>
+                        <input type="number" class="form-control" id="stepContentTolerance" 
+                               value="${content.tolerance ?? 0}" step="any" min="0"
+                               onchange="updateStepContent('tolerance', parseFloat(this.value))">
+                    </div>
+                </div>
+            `;
+        
+        case 'text_answer':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Вопрос</label>
+                    <textarea class="form-control" id="stepContentQuestion" rows="3"
+                              placeholder="Введите вопрос..."
+                              onchange="updateStepContent('question', this.value)">${content.question || ''}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Правильные ответы (каждый с новой строки)</label>
+                    <textarea class="form-control" id="stepContentPatterns" rows="3"
+                              placeholder="Правильный ответ 1\nПравильный ответ 2"
+                              onchange="updateStepContent('patterns', this.value.split('\\n').filter(p => p.trim()))">${(content.patterns || []).join('\n')}</textarea>
+                    <small class="text-muted">Можно использовать регулярные выражения</small>
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="stepContentCaseSensitive"
+                           ${content.case_sensitive ? 'checked' : ''}
+                           onchange="updateStepContent('case_sensitive', this.checked)">
+                    <label class="form-check-label" for="stepContentCaseSensitive">Учитывать регистр</label>
+                </div>
+            `;
+        
+        case 'free_answer':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Задание</label>
+                    <textarea class="form-control" id="stepContentQuestion" rows="4"
+                              placeholder="Опишите задание для эссе..."
+                              onchange="updateStepContent('question', this.value)">${content.question || ''}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Минимальная длина ответа (символов)</label>
+                    <input type="number" class="form-control" id="stepContentMinLength" 
+                           value="${content.min_length || 100}" min="0"
+                           onchange="updateStepContent('min_length', parseInt(this.value))">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Критерии оценки (для преподавателя)</label>
+                    <textarea class="form-control" id="stepContentRubric" rows="3"
+                              placeholder="Критерии оценивания..."
+                              onchange="updateStepContent('rubric', this.value)">${content.rubric || ''}</textarea>
+                </div>
+            `;
+        
+        case 'code':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Описание задачи</label>
+                    <textarea class="form-control" id="stepContentDescription" rows="4"
+                              placeholder="Опишите задачу для программирования..."
+                              onchange="updateStepContent('description', this.value)">${content.description || ''}</textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Язык программирования</label>
+                        <select class="form-select" id="stepContentLanguage" onchange="updateStepContent('language', this.value)">
+                            <option value="python" ${content.language === 'python' ? 'selected' : ''}>Python</option>
+                            <option value="javascript" ${content.language === 'javascript' ? 'selected' : ''}>JavaScript</option>
+                            <option value="java" ${content.language === 'java' ? 'selected' : ''}>Java</option>
+                            <option value="cpp" ${content.language === 'cpp' ? 'selected' : ''}>C++</option>
+                            <option value="csharp" ${content.language === 'csharp' ? 'selected' : ''}>C#</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Лимит времени (сек)</label>
+                        <input type="number" class="form-control" id="stepContentTimeLimit" 
+                               value="${content.time_limit || 5}" min="1"
+                               onchange="updateStepContent('time_limit', parseInt(this.value))">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Шаблон кода</label>
+                    <textarea class="form-control font-monospace" id="stepContentTemplate" rows="6"
+                              placeholder="# Ваш код здесь"
+                              onchange="updateStepContent('template', this.value)">${content.template || ''}</textarea>
+                </div>
+            `;
+        
+        case 'sql':
+            return `
+                <div class="mb-3">
+                    <label class="form-label">Описание задачи</label>
+                    <textarea class="form-control" id="stepContentDescription" rows="3"
+                              placeholder="Опишите SQL-задачу..."
+                              onchange="updateStepContent('description', this.value)">${content.description || ''}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Схема базы данных</label>
+                    <textarea class="form-control font-monospace" id="stepContentSchema" rows="5"
+                              placeholder="CREATE TABLE ..."
+                              onchange="updateStepContent('database_schema', this.value)">${content.database_schema || ''}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ожидаемый запрос</label>
+                    <textarea class="form-control font-monospace" id="stepContentQuery" rows="3"
+                              placeholder="SELECT ..."
+                              onchange="updateStepContent('expected_query', this.value)">${content.expected_query || ''}</textarea>
+                </div>
+            `;
+        
+        default:
+            return `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Редактор для этого типа шага ещё в разработке.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">JSON контент</label>
+                    <textarea class="form-control font-monospace" rows="10"
+                              onchange="try { updateStepField('content', JSON.parse(this.value)); } catch(e) { }">${JSON.stringify(content, null, 2)}</textarea>
+                </div>
+            `;
+    }
+}
+
+// Обновить поле шага
+let stepUpdateTimeout;
+async function updateStepField(field, value) {
+    if (!currentStepId) return;
+    
+    clearTimeout(stepUpdateTimeout);
+    stepUpdateTimeout = setTimeout(async () => {
+        const data = {};
+        data[field] = value;
+        await apiRequest(`/courses/api/step/${currentStepId}/update/`, 'POST', data);
+        
+        // Обновить данные в памяти
+        const step = stepsData.find(s => s.id === currentStepId);
+        if (step) {
+            step[field] = value;
+            if (field === 'title') {
+                renderStepsList();
+            }
+        }
+    }, 500);
+}
+
+// Обновить контент шага
+async function updateStepContent(field, value) {
+    if (!currentStepId) return;
+    
+    const step = stepsData.find(s => s.id === currentStepId);
+    if (!step) return;
+    
+    // Обновить в памяти
+    if (!step.content) step.content = {};
+    step.content[field] = value;
+    
+    // Сохранить на сервер
+    clearTimeout(stepUpdateTimeout);
+    stepUpdateTimeout = setTimeout(async () => {
+        await apiRequest(`/courses/api/step/${currentStepId}/update/`, 'POST', {
+            content: step.content
+        });
+    }, 500);
+}
+
+// Функции для работы с вариантами ответов (quiz)
+function updateChoice(index, value) {
+    const step = stepsData.find(s => s.id === currentStepId);
+    if (!step || !step.content.choices) return;
+    
+    step.content.choices[index] = value;
+    updateStepContent('choices', step.content.choices);
+}
+
+function addChoice() {
+    const step = stepsData.find(s => s.id === currentStepId);
+    if (!step) return;
+    
+    if (!step.content.choices) step.content.choices = [];
+    step.content.choices.push(`Вариант ${step.content.choices.length + 1}`);
+    
+    updateStepContent('choices', step.content.choices);
+    selectStep(currentStepId); // Перерисовать
+}
+
+function removeChoice(index) {
+    const step = stepsData.find(s => s.id === currentStepId);
+    if (!step || !step.content.choices || step.content.choices.length <= 2) return;
+    
+    step.content.choices.splice(index, 1);
+    
+    // Корректировать correct_index/correct_indexes
+    if (step.step_type === 'quiz_single') {
+        if (step.content.correct_index === index) {
+            step.content.correct_index = 0;
+        } else if (step.content.correct_index > index) {
+            step.content.correct_index--;
+        }
+        updateStepContent('correct_index', step.content.correct_index);
+    } else {
+        step.content.correct_indexes = (step.content.correct_indexes || [])
+            .filter(i => i !== index)
+            .map(i => i > index ? i - 1 : i);
+        updateStepContent('correct_indexes', step.content.correct_indexes);
+    }
+    
+    updateStepContent('choices', step.content.choices);
+    selectStep(currentStepId); // Перерисовать
+}
+
+function updateCorrectAnswer(index, checked) {
+    const step = stepsData.find(s => s.id === currentStepId);
+    if (!step) return;
+    
+    if (step.step_type === 'quiz_single') {
+        step.content.correct_index = index;
+        updateStepContent('correct_index', index);
+    } else {
+        if (!step.content.correct_indexes) step.content.correct_indexes = [];
+        if (checked) {
+            if (!step.content.correct_indexes.includes(index)) {
+                step.content.correct_indexes.push(index);
+            }
+        } else {
+            step.content.correct_indexes = step.content.correct_indexes.filter(i => i !== index);
+        }
+        updateStepContent('correct_indexes', step.content.correct_indexes);
+    }
+}
+
+// Удалить шаг
+async function deleteStep(stepId) {
+    if (!confirm('Удалить этот шаг?')) return;
+    
+    const result = await apiRequest(`/courses/api/step/${stepId}/delete/`, 'POST');
+    
+    if (result.success) {
+        stepsData = stepsData.filter(s => s.id !== stepId);
+        renderStepsList();
+        
+        if (currentStepId === stepId) {
+            currentStepId = null;
+            document.getElementById('stepEditorPlaceholder').style.display = 'flex';
+            document.getElementById('stepEditorContent').style.display = 'none';
+        }
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось удалить шаг'));
+    }
+}
+
+// Дублировать шаг
+async function duplicateStep(stepId) {
+    const result = await apiRequest(`/courses/api/step/${stepId}/duplicate/`, 'POST');
+    
+    if (result.success) {
+        stepsData.push(result.step);
+        renderStepsList();
+        selectStep(result.step.id);
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось дублировать шаг'));
+    }
+}
 </script>
 {% endblock %}

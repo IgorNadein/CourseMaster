@@ -33,6 +33,12 @@ from .ajax_views import (
     QuizCreateAjaxView, AssignmentCreateAjaxView, AssignmentGetAjaxView, AssignmentUpdateAjaxView
 )
 
+# Импорт AJAX views для Step (Stepik-style шаги)
+from .ajax_views import (
+    StepListAjaxView, StepCreateAjaxView, StepGetAjaxView, StepUpdateAjaxView,
+    StepDeleteAjaxView, StepReorderAjaxView, StepDuplicateAjaxView
+)
+
 
 class CourseListView(ListView):
     """
