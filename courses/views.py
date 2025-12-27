@@ -209,6 +209,9 @@ class MyCoursesView(LoginRequiredMixin, ListView):
             student=self.request.user
         ).select_related(
             'course__instructor', 'course__category'
+        ).prefetch_related(
+            'course__sections__lessons',
+            'lesson_progress'
         ).order_by('-enrolled_at')
     
     def get_context_data(self, **kwargs):
@@ -226,6 +229,37 @@ class MyCoursesView(LoginRequiredMixin, ListView):
             context['avg_progress'] = total_progress / context['total_courses']
         else:
             context['avg_progress'] = 0
+        
+        # Для каждого enrollment найти следующий непройденный урок
+        enrollments_with_next_lesson = []
+        for enrollment in context['enrollments']:
+            # Получить все уроки курса в правильном порядке
+            all_lessons = Lesson.objects.filter(
+                section__course=enrollment.course
+            ).order_by('section__order', 'order')
+            
+            # Получить ID пройденных уроков
+            completed_lesson_ids = set(
+                enrollment.lesson_progress.filter(completed=True).values_list('lesson_id', flat=True)
+            )
+            
+            # Найти первый непройденный урок
+            next_lesson = None
+            for lesson in all_lessons:
+                if lesson.id not in completed_lesson_ids:
+                    next_lesson = lesson
+                    break
+            
+            # Если все уроки пройдены, показать первый урок
+            if next_lesson is None and all_lessons.exists():
+                next_lesson = all_lessons.first()
+            
+            enrollments_with_next_lesson.append({
+                'enrollment': enrollment,
+                'next_lesson': next_lesson,
+            })
+        
+        context['enrollments_data'] = enrollments_with_next_lesson
         
         return context
 

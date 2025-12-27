@@ -56,18 +56,18 @@
     </div>
 
     <!-- Список курсов -->
-    {% if enrollments %}
+    {% if enrollments_data %}
     <div class="row">
-        {% for enrollment in enrollments %}
+        {% for item in enrollments_data %}
         <div class="col-md-6 mb-4">
             <div class="card h-100">
                 <div class="row g-0">
                     <!-- Миниатюра -->
                     <div class="col-md-4">
-                        {% if enrollment.course.thumbnail %}
-                        <img src="{{ enrollment.course.thumbnail.url }}" class="img-fluid rounded-start h-100" alt="{{ enrollment.course.title }}" style="object-fit: cover;">
+                        {% if item.enrollment.course.thumbnail %}
+                        <img src="{{ item.enrollment.course.thumbnail.url }}" class="img-fluid rounded-start h-100" alt="{{ item.enrollment.course.title }}" style="object-fit: cover;">
                         {% else %}
-                        <div class="bg-secondary d-flex align-items-center justify-content-center h-100">
+                        <div class="bg-secondary d-flex align-items-center justify-content-center h-100" style="min-height: 180px;">
                             <i class="bi bi-book text-white" style="font-size: 3rem;"></i>
                         </div>
                         {% endif %}
@@ -78,27 +78,27 @@
                         <div class="card-body d-flex flex-column h-100">
                             <!-- Заголовок -->
                             <h5 class="card-title">
-                                <a href="{% url 'course_detail' enrollment.course.slug %}" class="text-decoration-none text-dark">
-                                    {{ enrollment.course.title }}
+                                <a href="{% url 'course_detail' item.enrollment.course.slug %}" class="text-decoration-none text-dark">
+                                    {{ item.enrollment.course.title }}
                                 </a>
                             </h5>
 
                             <!-- Преподаватель -->
-                            <p class="small text-muted">
-                                <i class="bi bi-person"></i> {{ enrollment.course.instructor.get_full_name|default:enrollment.course.instructor.username }}
+                            <p class="small text-muted mb-2">
+                                <i class="bi bi-person"></i> {{ item.enrollment.course.instructor.get_full_name|default:item.enrollment.course.instructor.username }}
                             </p>
 
                             <!-- Прогресс -->
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between mb-1">
                                     <small>Прогресс</small>
-                                    <small><strong>{{ enrollment.progress_percentage|floatformat:0 }}%</strong></small>
+                                    <small><strong>{{ item.enrollment.progress_percentage|floatformat:0 }}%</strong></small>
                                 </div>
-                                <div class="progress">
-                                    <div class="progress-bar {% if enrollment.completed %}bg-success{% endif %}" 
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar {% if item.enrollment.completed %}bg-success{% else %}bg-primary{% endif %}" 
                                          role="progressbar" 
-                                         style="width: {{ enrollment.progress_percentage }}%" 
-                                         aria-valuenow="{{ enrollment.progress_percentage }}" 
+                                         style="width: {{ item.enrollment.progress_percentage }}%" 
+                                         aria-valuenow="{{ item.enrollment.progress_percentage }}" 
                                          aria-valuemin="0" 
                                          aria-valuemax="100">
                                     </div>
@@ -107,31 +107,38 @@
 
                             <!-- Статус и дата -->
                             <div class="mt-auto">
-                                {% if enrollment.completed %}
+                                {% if item.enrollment.completed %}
                                 <div class="alert alert-success py-2 mb-2">
-                                    <i class="bi bi-check-circle-fill"></i> Курс завершен {{ enrollment.completed_at|date:"d.m.Y" }}
+                                    <i class="bi bi-check-circle-fill"></i> Курс завершен {{ item.enrollment.completed_at|date:"d.m.Y" }}
                                 </div>
-                                    {% if enrollment.certificate %}
-                                    <a href="{% url 'certificate_detail' enrollment.certificate.certificate_number %}" 
+                                    {% if item.enrollment.certificate %}
+                                    <a href="{% url 'certificate_detail' item.enrollment.certificate.certificate_number %}" 
                                        class="btn btn-outline-warning btn-sm w-100 mb-2">
-                                        <i class="bi bi-award me-1"></i> Сертификат
+                                        <i class="bi bi-award me-1"></i> Просмотреть сертификат
                                     </a>
                                     {% endif %}
                                 {% else %}
                                 <small class="text-muted d-block mb-2">
-                                    Начат {{ enrollment.enrolled_at|date:"d.m.Y" }}
+                                    <i class="bi bi-calendar3"></i> Начат {{ item.enrollment.enrolled_at|date:"d.m.Y" }}
                                 </small>
                                 {% endif %}
 
-                                <!-- Кнопка -->
-                                <a href="{% url 'course_detail' enrollment.course.slug %}" class="btn btn-primary w-100">
-                                    <i class="bi bi-play-circle"></i> 
-                                    {% if enrollment.completed %}
-                                        Повторить курс
-                                    {% else %}
-                                        Продолжить обучение
+                                <!-- Кнопки -->
+                                <div class="d-flex gap-2">
+                                    {% if item.next_lesson %}
+                                    <a href="{% url 'lesson_view' item.next_lesson.id %}" class="btn btn-primary flex-grow-1">
+                                        <i class="bi bi-play-fill"></i> 
+                                        {% if item.enrollment.completed %}
+                                            Повторить
+                                        {% else %}
+                                            Продолжить
+                                        {% endif %}
+                                    </a>
                                     {% endif %}
-                                </a>
+                                    <a href="{% url 'course_detail' item.enrollment.course.slug %}" class="btn btn-outline-secondary" title="О курсе">
+                                        <i class="bi bi-info-circle"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
