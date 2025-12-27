@@ -64,6 +64,8 @@ urlpatterns = [
     path('api/lesson/<int:lesson_id>/delete/', views.LessonDeleteAjaxView.as_view(), name='api_lesson_delete'),
     path('api/lesson/<int:lesson_id>/quiz/create/', views.QuizCreateAjaxView.as_view(), name='api_quiz_create'),
     path('api/lesson/<int:lesson_id>/assignment/create/', views.AssignmentCreateAjaxView.as_view(), name='api_assignment_create'),
+    path('api/assignment/<int:assignment_id>/', views.AssignmentGetAjaxView.as_view(), name='api_assignment_get'),
+    path('api/assignment/<int:assignment_id>/update/', views.AssignmentUpdateAjaxView.as_view(), name='api_assignment_update'),
     
     # Домашние задания (Студенты)
     path('assignment/<int:assignment_id>/submit/', views.AssignmentSubmitView.as_view(), name='assignment_submit'),

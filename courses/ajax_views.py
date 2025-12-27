@@ -746,3 +746,68 @@ class AssignmentCreateAjaxView(LoginRequiredMixin, View):
             'assignment_id': assignment.id
         })
 
+
+class AssignmentGetAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Получить данные задания
+    """
+    def get(self, request, assignment_id):
+        assignment = get_object_or_404(Assignment, id=assignment_id)
+        
+        if assignment.lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        return JsonResponse({
+            'success': True,
+            'assignment': {
+                'id': assignment.id,
+                'title': assignment.title,
+                'description': assignment.description,
+                'max_points': assignment.max_points,
+                'due_date': assignment.due_date.isoformat() if assignment.due_date else None,
+            }
+        })
+
+
+class AssignmentUpdateAjaxView(LoginRequiredMixin, View):
+    """
+    AJAX: Обновить задание
+    """
+    def post(self, request, assignment_id):
+        assignment = get_object_or_404(Assignment, id=assignment_id)
+        
+        if assignment.lesson.section.course.instructor != request.user:
+            return JsonResponse({'error': 'Нет доступа'}, status=403)
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        # Обновить поля
+        if 'title' in data:
+            assignment.title = data['title']
+        if 'description' in data:
+            assignment.description = data['description']
+        if 'max_points' in data:
+            assignment.max_points = int(data['max_points'])
+        if 'due_date' in data:
+            if data['due_date']:
+                from dateutil import parser
+                assignment.due_date = parser.parse(data['due_date'])
+            else:
+                assignment.due_date = None
+        
+        assignment.save()
+        
+        return JsonResponse({
+            'success': True,
+            'assignment': {
+                'id': assignment.id,
+                'title': assignment.title,
+                'description': assignment.description,
+                'max_points': assignment.max_points,
+                'due_date': assignment.due_date.isoformat() if assignment.due_date else None,
+            }
+        })
+

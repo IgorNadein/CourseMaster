@@ -30,7 +30,7 @@ from .ajax_views import (
     CourseBuilderView, CourseUpdateAjaxView, CoursePublishAjaxView, CourseUnpublishAjaxView,
     SectionCreateAjaxView, SectionUpdateAjaxView, SectionDeleteAjaxView,
     LessonCreateAjaxView, LessonGetAjaxView, LessonUpdateAjaxView, LessonDeleteAjaxView,
-    QuizCreateAjaxView, AssignmentCreateAjaxView
+    QuizCreateAjaxView, AssignmentCreateAjaxView, AssignmentGetAjaxView, AssignmentUpdateAjaxView
 )
 
 

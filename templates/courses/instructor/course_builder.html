@@ -219,9 +219,9 @@
                                     {% endif %}
                                     {% if lesson.lesson_type == 'assignment' %}
                                         {% if lesson.assignment %}
-                                        <a href="{% url 'instructor_assignment_detail' lesson.assignment.id %}" class="btn btn-sm btn-link text-success" title="Просмотр работ">
+                                        <button type="button" class="btn btn-sm btn-link text-success" onclick="editAssignment({{ lesson.assignment.id }})" title="Настройки задания">
                                             <i class="bi bi-clipboard-check"></i>
-                                        </a>
+                                        </button>
                                         {% else %}
                                         <button type="button" class="btn btn-sm btn-link text-warning" onclick="createAssignment({{ lesson.id }})" title="Создать задание">
                                             <i class="bi bi-plus-circle"></i>
@@ -445,6 +445,65 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-primary" onclick="saveCourseSettings()">
+                    <i class="bi bi-check-lg"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования задания -->
+<div class="modal fade" id="assignmentEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-clipboard-check"></i> Настройки задания
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignmentEditForm">
+                    <input type="hidden" id="editAssignmentId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Название задания</label>
+                        <input type="text" class="form-control" id="assignmentTitle" placeholder="Введите название">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Описание задания</label>
+                        <textarea class="form-control" id="assignmentDescription" rows="5" placeholder="Опишите задание для студентов..."></textarea>
+                        <small class="text-muted">Поддерживается Markdown</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Максимум баллов</label>
+                                <input type="number" class="form-control" id="assignmentMaxPoints" min="1" max="1000" value="100">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Дедлайн (опционально)</label>
+                                <input type="datetime-local" class="form-control" id="assignmentDueDate">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        После сохранения студенты смогут отправлять работы, а вы — проверять и оценивать их.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="viewSubmissionsLink" class="btn btn-outline-primary me-auto" target="_blank">
+                    <i class="bi bi-eye"></i> Посмотреть работы
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveAssignment()">
                     <i class="bi bi-check-lg"></i> Сохранить
                 </button>
             </div>
@@ -712,10 +771,70 @@ async function createAssignment(lessonId) {
     });
     
     if (result.success) {
-        // Перенаправить на страницу задания
-        window.location.href = `/courses/instructor/assignment/${result.assignment_id}/`;
+        // Открыть модальное окно для настройки задания
+        await editAssignment(result.assignment_id);
+        // Перезагрузить страницу для отображения кнопки
+        location.reload();
     } else {
         alert('Ошибка: ' + (result.error || 'Не удалось создать задание'));
+    }
+}
+
+// Редактировать задание
+async function editAssignment(assignmentId) {
+    // Загрузить данные задания
+    const result = await apiRequest(`/courses/api/assignment/${assignmentId}/`, 'GET');
+    
+    if (result.success) {
+        const assignment = result.assignment;
+        
+        // Заполнить форму
+        document.getElementById('editAssignmentId').value = assignment.id;
+        document.getElementById('assignmentTitle').value = assignment.title || '';
+        document.getElementById('assignmentDescription').value = assignment.description || '';
+        document.getElementById('assignmentMaxPoints').value = assignment.max_points || 100;
+        
+        if (assignment.due_date) {
+            // Преобразовать ISO дату в формат datetime-local
+            const date = new Date(assignment.due_date);
+            const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+            document.getElementById('assignmentDueDate').value = localDate.toISOString().slice(0, 16);
+        } else {
+            document.getElementById('assignmentDueDate').value = '';
+        }
+        
+        // Обновить ссылку на просмотр работ
+        document.getElementById('viewSubmissionsLink').href = `/courses/instructor/assignment/${assignment.id}/`;
+        
+        // Открыть модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('assignmentEditModal'));
+        modal.show();
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось загрузить задание'));
+    }
+}
+
+// Сохранить изменения задания
+async function saveAssignment() {
+    const assignmentId = document.getElementById('editAssignmentId').value;
+    const data = {
+        title: document.getElementById('assignmentTitle').value,
+        description: document.getElementById('assignmentDescription').value,
+        max_points: parseInt(document.getElementById('assignmentMaxPoints').value),
+        due_date: document.getElementById('assignmentDueDate').value || null
+    };
+    
+    const result = await apiRequest(`/courses/api/assignment/${assignmentId}/update/`, 'POST', data);
+    
+    if (result.success) {
+        // Закрыть модальное окно
+        const modal = bootstrap.Modal.getInstance(document.getElementById('assignmentEditModal'));
+        modal.hide();
+        
+        // Показать уведомление
+        alert('Задание сохранено!');
+    } else {
+        alert('Ошибка: ' + (result.error || 'Не удалось сохранить задание'));
     }
 }
 
