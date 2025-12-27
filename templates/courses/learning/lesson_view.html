@@ -6,6 +6,328 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/lesson.css' %}">
+<style>
+/* Step Navigation */
+.step-navigation {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.step-progress-bar {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.step-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    transition: width 0.3s ease;
+}
+
+.step-indicators {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.step-indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: #6c757d;
+}
+
+.step-indicator:hover {
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+.step-indicator.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.step-indicator.completed {
+    background: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+/* Step Content */
+.step-content {
+    padding: 2rem;
+    min-height: 400px;
+}
+
+.step-type-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    background: #e9ecef;
+    color: #495057;
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+/* Quiz Step Styles */
+.quiz-question {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.quiz-question h5 {
+    margin-bottom: 1rem;
+}
+
+.quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.quiz-option {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quiz-option:hover {
+    border-color: #0d6efd;
+    background: #f8f9fa;
+}
+
+.quiz-option.selected {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+.quiz-option.correct {
+    border-color: #28a745;
+    background: #d4edda;
+}
+
+.quiz-option.incorrect {
+    border-color: #dc3545;
+    background: #f8d7da;
+}
+
+.quiz-option input {
+    margin-right: 0.75rem;
+}
+
+/* Text Answer Step */
+.text-answer-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.text-answer-input:focus {
+    outline: none;
+    border-color: #0d6efd;
+}
+
+/* Free Answer (Essay) */
+.essay-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    resize: vertical;
+}
+
+.essay-textarea:focus {
+    outline: none;
+    border-color: #0d6efd;
+}
+
+/* Code Step */
+.code-editor-container {
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.code-editor-header {
+    background: #343a40;
+    color: white;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.code-editor {
+    width: 100%;
+    min-height: 300px;
+    padding: 1rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    resize: vertical;
+}
+
+/* Step Feedback */
+.step-feedback {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.step-feedback.success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.step-feedback.error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.step-feedback.info {
+    background: #e7f1ff;
+    border: 1px solid #b8daff;
+    color: #004085;
+}
+
+/* Navigation Buttons */
+.step-nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Video Step */
+.video-container {
+    background: #000;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.video-container iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+}
+
+/* Numeric Input */
+.numeric-input {
+    max-width: 200px;
+    padding: 0.75rem;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+/* Sorting Step */
+.sortable-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sortable-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    cursor: grab;
+}
+
+.sortable-item:active {
+    cursor: grabbing;
+}
+
+.sortable-handle {
+    margin-right: 0.75rem;
+    color: #6c757d;
+}
+
+/* Matching Step */
+.matching-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.matching-column h6 {
+    margin-bottom: 1rem;
+}
+
+.matching-item {
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+
+.matching-item.selected {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+.matching-item.matched {
+    border-color: #28a745;
+    background: #d4edda;
+}
+
+/* Fill Blanks */
+.fill-blank-input {
+    display: inline-block;
+    width: 150px;
+    padding: 0.25rem 0.5rem;
+    border: none;
+    border-bottom: 2px solid #0d6efd;
+    background: transparent;
+    text-align: center;
+    font-size: inherit;
+}
+
+.fill-blank-input:focus {
+    outline: none;
+    border-bottom-color: #0d6efd;
+}
+</style>
 {% endblock %}
 
 
@@ -14,6 +336,358 @@
     <div class="row">
         <!-- Основной контент урока -->
         <div class="col-lg-9 p-0">
+            
+            {% if has_steps %}
+            <!-- ============================================================ -->
+            <!-- STEP-BASED CONTENT (Stepik-style) -->
+            <!-- ============================================================ -->
+            
+            <!-- Step Navigation Bar -->
+            <div class="step-navigation">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h5 class="mb-0">{{ lesson.title }}</h5>
+                        <small class="text-muted">
+                            <a href="{% url 'course_detail' course.slug %}" class="text-decoration-none">{{ course.title }}</a> 
+                            • {{ section.title }}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <span class="text-muted">Шаг {{ current_step_index|add:1 }} из {{ steps_count }}</span>
+                        {% if is_completed %}
+                        <span class="badge bg-success ms-2">
+                            <i class="bi bi-check-circle-fill"></i> Урок пройден
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="step-progress-bar">
+                    <div class="step-progress-fill" style="width: {{ steps_progress_percent }}%;"></div>
+                </div>
+                
+                <!-- Step Indicators -->
+                <div class="step-indicators">
+                    {% for step in steps %}
+                    {% with progress=step_progress|default:"" %}
+                    <a href="?step={{ step.id }}" 
+                       class="step-indicator {% if step.id == current_step.id %}active{% endif %} {% if progress and step.id in progress and progress.step.id.completed %}completed{% endif %}"
+                       title="{{ step.get_step_type_display }}: {{ step.title|default:'Шаг'|add:' ' }}{{ forloop.counter }}">
+                        {{ forloop.counter }}
+                    </a>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Step Content -->
+            <div class="step-content">
+                {% if current_step %}
+                
+                <!-- Step Type Badge -->
+                <span class="step-type-badge">
+                    {% if current_step.step_type == 'text' %}📝 Теория
+                    {% elif current_step.step_type == 'video' %}🎬 Видео
+                    {% elif current_step.step_type == 'quiz_single' %}✅ Тест (один ответ)
+                    {% elif current_step.step_type == 'quiz_multiple' %}☑️ Тест (несколько ответов)
+                    {% elif current_step.step_type == 'quiz_sorting' %}📊 Сортировка
+                    {% elif current_step.step_type == 'quiz_matching' %}🔗 Сопоставление
+                    {% elif current_step.step_type == 'fill_blanks' %}📝 Заполни пропуски
+                    {% elif current_step.step_type == 'numeric' %}🔢 Числовой ответ
+                    {% elif current_step.step_type == 'text_answer' %}💬 Текстовый ответ
+                    {% elif current_step.step_type == 'free_answer' %}📄 Эссе
+                    {% elif current_step.step_type == 'code' %}💻 Программирование
+                    {% elif current_step.step_type == 'sql' %}🗄️ SQL
+                    {% else %}{{ current_step.get_step_type_display }}
+                    {% endif %}
+                </span>
+                
+                {% if current_step.title %}
+                <h4 class="mb-3">{{ current_step.title }}</h4>
+                {% endif %}
+                
+                <!-- Render Step Content Based on Type -->
+                <div class="step-body" id="step-body" data-step-id="{{ current_step.id }}" data-step-type="{{ current_step.step_type }}">
+                    
+                    {% if current_step.step_type == 'text' %}
+                    <!-- TEXT STEP -->
+                    <div class="lesson-content">
+                        {% if current_step.content.html %}
+                            {{ current_step.content.html|safe }}
+                        {% elif current_step.content.markdown %}
+                            {{ current_step.content.markdown|markdown }}
+                        {% else %}
+                            <p class="text-muted">Контент не добавлен</p>
+                        {% endif %}
+                    </div>
+                    
+                    {% elif current_step.step_type == 'video' %}
+                    <!-- VIDEO STEP -->
+                    <div class="video-container">
+                        {% if current_step.content.url %}
+                        <iframe src="{{ current_step.content.url }}" allowfullscreen></iframe>
+                        {% else %}
+                        <div class="p-5 text-center text-muted">
+                            <i class="bi bi-film" style="font-size: 3rem;"></i>
+                            <p>Видео не добавлено</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if current_step.content.duration %}
+                    <p class="text-muted mt-2"><i class="bi bi-clock"></i> {{ current_step.content.duration }} сек.</p>
+                    {% endif %}
+                    
+                    {% elif current_step.step_type == 'quiz_single' %}
+                    <!-- QUIZ SINGLE CHOICE -->
+                    <form id="step-answer-form" class="quiz-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>{{ current_step.content.question }}</h5>
+                            <div class="quiz-options">
+                                {% for choice in current_step.content.choices %}
+                                <label class="quiz-option">
+                                    <input type="radio" name="answer" value="{{ forloop.counter0 }}">
+                                    <span>{{ choice }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'quiz_multiple' %}
+                    <!-- QUIZ MULTIPLE CHOICE -->
+                    <form id="step-answer-form" class="quiz-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>{{ current_step.content.question }}</h5>
+                            <p class="text-muted small"><i class="bi bi-info-circle"></i> Выберите все правильные ответы</p>
+                            <div class="quiz-options">
+                                {% for choice in current_step.content.choices %}
+                                <label class="quiz-option">
+                                    <input type="checkbox" name="answer" value="{{ forloop.counter0 }}">
+                                    <span>{{ choice }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'numeric' %}
+                    <!-- NUMERIC ANSWER -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>{{ current_step.content.question }}</h5>
+                            <input type="number" step="any" name="answer" class="numeric-input" 
+                                   placeholder="Введите число" required>
+                            {% if current_step.content.tolerance %}
+                            <p class="text-muted small mt-2">
+                                <i class="bi bi-info-circle"></i> Допустимая погрешность: ±{{ current_step.content.tolerance }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'text_answer' %}
+                    <!-- TEXT ANSWER -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>{{ current_step.content.question }}</h5>
+                            <input type="text" name="answer" class="text-answer-input" 
+                                   placeholder="Введите ответ" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'free_answer' %}
+                    <!-- FREE ANSWER (ESSAY) -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>{{ current_step.content.question }}</h5>
+                            {% if current_step.content.min_length %}
+                            <p class="text-muted small">
+                                <i class="bi bi-info-circle"></i> Минимальная длина: {{ current_step.content.min_length }} символов
+                            </p>
+                            {% endif %}
+                            <textarea name="answer" class="essay-textarea" 
+                                      placeholder="Напишите развернутый ответ..." required></textarea>
+                            <div class="d-flex justify-content-between mt-2">
+                                <small class="text-muted" id="char-counter">0 символов</small>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Отправить на проверку
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'code' %}
+                    <!-- CODE CHALLENGE -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>{{ current_step.content.question|default:"Напишите код" }}</h5>
+                            <div class="code-editor-container mt-3">
+                                <div class="code-editor-header">
+                                    <i class="bi bi-code-slash"></i> {{ current_step.content.language|default:"python"|upper }}
+                                </div>
+                                <textarea name="answer" class="code-editor">{{ current_step.content.template|default:"# Напишите ваш код здесь" }}</textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-play-fill"></i> Запустить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'quiz_sorting' %}
+                    <!-- SORTING STEP -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>Расположите элементы в правильном порядке</h5>
+                            <p class="text-muted small"><i class="bi bi-info-circle"></i> Перетащите элементы для изменения порядка</p>
+                            <div class="sortable-list" id="sortable-list">
+                                {% for item in current_step.content.items %}
+                                <div class="sortable-item" draggable="true" data-index="{{ forloop.counter0 }}">
+                                    <span class="sortable-handle"><i class="bi bi-grip-vertical"></i></span>
+                                    <span>{{ item }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'quiz_matching' %}
+                    <!-- MATCHING STEP -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>Сопоставьте элементы</h5>
+                            <p class="text-muted small"><i class="bi bi-info-circle"></i> Кликните на элемент слева, затем на соответствующий справа</p>
+                            <div class="matching-container">
+                                <div class="matching-column">
+                                    <h6>Левая колонка</h6>
+                                    {% for item in current_step.content.left %}
+                                    <div class="matching-item matching-left" data-index="{{ forloop.counter0 }}">{{ item }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="matching-column">
+                                    <h6>Правая колонка</h6>
+                                    {% for item in current_step.content.right %}
+                                    <div class="matching-item matching-right" data-index="{{ forloop.counter0 }}">{{ item }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% elif current_step.step_type == 'fill_blanks' %}
+                    <!-- FILL IN THE BLANKS -->
+                    <form id="step-answer-form">
+                        {% csrf_token %}
+                        <div class="quiz-question">
+                            <h5>Заполните пропуски</h5>
+                            <div class="fill-blanks-text" id="fill-blanks-container">
+                                {{ current_step.content.text_with_blanks|safe }}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">
+                            <i class="bi bi-check-lg"></i> Проверить
+                        </button>
+                    </form>
+                    <div id="step-feedback" class="step-feedback" style="display: none;"></div>
+                    
+                    {% else %}
+                    <!-- UNKNOWN TYPE -->
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Неизвестный тип шага: {{ current_step.step_type }}
+                    </div>
+                    {% endif %}
+                    
+                </div>
+                
+                <!-- Step Navigation Buttons -->
+                <div class="step-nav-buttons">
+                    <div>
+                        {% if previous_step %}
+                        <a href="?step={{ previous_step.id }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Предыдущий шаг
+                        </a>
+                        {% elif previous_lesson %}
+                        <a href="{% url 'lesson_view' previous_lesson.id %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Предыдущий урок
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        {% if not current_step.is_interactive %}
+                        <!-- Для контентных шагов (text, video) - кнопка отметки -->
+                        <button type="button" class="btn btn-success me-2" id="mark-step-complete"
+                                data-step-id="{{ current_step.id }}">
+                            <i class="bi bi-check-circle"></i> Отметить как пройденный
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        {% if next_step %}
+                        <a href="?step={{ next_step.id }}" class="btn btn-primary">
+                            Следующий шаг <i class="bi bi-arrow-right"></i>
+                        </a>
+                        {% elif next_lesson %}
+                        <a href="{% url 'lesson_view' next_lesson.id %}" class="btn btn-primary">
+                            Следующий урок <i class="bi bi-arrow-right"></i>
+                        </a>
+                        {% else %}
+                        <a href="{% url 'course_detail' course.slug %}" class="btn btn-success">
+                            <i class="bi bi-trophy"></i> Завершить курс
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% else %}
+                <!-- No steps created yet -->
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 4rem; color: #dee2e6;"></i>
+                    <p class="text-muted mt-3">Шаги урока еще не добавлены</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% else %}
+            <!-- ============================================================ -->
+            <!-- LEGACY CONTENT (старый формат без шагов) -->
+            <!-- ============================================================ -->
+            
             <!-- Видео плеер -->
             {% if lesson.lesson_type == 'video' and lesson.video_url %}
             <div class="ratio ratio-16x9 bg-dark">
@@ -59,7 +733,7 @@
                 </div>
                 {% endif %}
 
-                <!-- Тест урока -->
+                <!-- Тест урока (legacy) -->
                 {% if lesson.quiz %}
                 <div class="mb-4">
                     <div class="card border-0 bg-light">
@@ -78,7 +752,7 @@
                 </div>
                 {% endif %}
 
-                <!-- Домашнее задание -->
+                <!-- Домашнее задание (legacy) -->
                 {% if lesson.assignment %}
                 <div class="mb-4">
                     <div class="card border-0 bg-light">
@@ -100,195 +774,7 @@
                 </div>
                 {% endif %}
 
-                <!-- Обсуждение урока -->
-                <div class="mb-4 mt-5" id="comments">
-                    <h5 class="mb-4">
-                        <i class="bi bi-chat-dots"></i> Обсуждение 
-                        <span class="badge bg-secondary">{{ comments_count }}</span>
-                    </h5>
-
-                    <!-- Форма добавления комментария -->
-                    {% if can_comment %}
-                    <div class="card border-0 bg-light mb-4">
-                        <div class="card-body">
-                            <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <textarea name="content" class="form-control" rows="3" 
-                                              placeholder="Напишите ваш вопрос или комментарий..." required></textarea>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-send"></i> Отправить
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Записывайтесь на курс, чтобы участвовать в обсуждении.
-                    </div>
-                    {% endif %}
-
-                    <!-- Список комментариев -->
-                    {% if comments %}
-                    <div class="comments-list">
-                        {% for comment in comments %}
-                        <div class="card mb-3 {% if comment.is_pinned %}border-warning{% else %}border-0{% endif %} bg-light">
-                            <div class="card-body">
-                                <!-- Заголовок комментария -->
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
-                                             style="width: 40px; height: 40px;">
-                                            {{ comment.author.username|first|upper }}
-                                        </div>
-                                        <div>
-                                            <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
-                                            {% if comment.author == course.instructor %}
-                                            <span class="badge bg-primary ms-1">Преподаватель</span>
-                                            {% endif %}
-                                            {% if comment.is_pinned %}
-                                            <span class="badge bg-warning text-dark ms-1">
-                                                <i class="bi bi-pin-fill"></i> Закреплено
-                                            </span>
-                                            {% endif %}
-                                            <br>
-                                            <small class="text-muted">
-                                                {{ comment.created_at|date:"d.m.Y H:i" }}
-                                                {% if comment.is_edited %}
-                                                <span class="fst-italic">(изменено)</span>
-                                                {% endif %}
-                                            </small>
-                                        </div>
-                                    </div>
-                                    <div class="dropdown">
-                                        {% if comment.author == request.user or course.instructor == request.user %}
-                                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
-                                            <i class="bi bi-three-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            {% if comment.author == request.user %}
-                                            <li>
-                                                <a class="dropdown-item" href="{% url 'lesson_comment_update' comment.id %}">
-                                                    <i class="bi bi-pencil"></i> Редактировать
-                                                </a>
-                                            </li>
-                                            {% endif %}
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' comment.id %}">
-                                                    <i class="bi bi-trash"></i> Удалить
-                                                </a>
-                                            </li>
-                                            {% if course.instructor == request.user %}
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <form method="post" action="{% url 'lesson_comment_pin' comment.id %}" class="d-inline">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="dropdown-item">
-                                                        <i class="bi bi-pin"></i> 
-                                                        {% if comment.is_pinned %}Открепить{% else %}Закрепить{% endif %}
-                                                    </button>
-                                                </form>
-                                            </li>
-                                            {% endif %}
-                                        </ul>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <!-- Текст комментария -->
-                                <p class="mb-2">{{ comment.content|linebreaks }}</p>
-
-                                <!-- Кнопка ответа -->
-                                {% if can_comment %}
-                                <button class="btn btn-sm btn-link text-muted p-0 reply-toggle" 
-                                        data-comment-id="{{ comment.id }}">
-                                    <i class="bi bi-reply"></i> Ответить
-                                </button>
-
-                                <!-- Форма ответа (скрыта по умолчанию) -->
-                                <div class="reply-form mt-2" id="reply-form-{{ comment.id }}" style="display: none;">
-                                    <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="reply_to" value="{{ comment.id }}">
-                                        <div class="mb-2">
-                                            <textarea name="content" class="form-control form-control-sm" rows="2" 
-                                                      placeholder="Написать ответ..." required></textarea>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-sm">
-                                            <i class="bi bi-send"></i> Ответить
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm reply-cancel" 
-                                                data-comment-id="{{ comment.id }}">
-                                            Отмена
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endif %}
-
-                                <!-- Ответы на комментарий -->
-                                {% if comment.replies.all %}
-                                <div class="replies mt-3 ps-4 border-start">
-                                    {% for reply in comment.replies.all %}
-                                    <div class="reply mb-3">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" 
-                                                     style="width: 30px; height: 30px; font-size: 0.75rem;">
-                                                    {{ reply.author.username|first|upper }}
-                                                </div>
-                                                <div>
-                                                    <strong class="small">{{ reply.author.get_full_name|default:reply.author.username }}</strong>
-                                                    {% if reply.author == course.instructor %}
-                                                    <span class="badge bg-primary" style="font-size: 0.6rem;">Преподаватель</span>
-                                                    {% endif %}
-                                                    <br>
-                                                    <small class="text-muted">
-                                                        {{ reply.created_at|date:"d.m.Y H:i" }}
-                                                        {% if reply.is_edited %}<span class="fst-italic">(изм.)</span>{% endif %}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                            {% if reply.author == request.user or course.instructor == request.user %}
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end">
-                                                    {% if reply.author == request.user %}
-                                                    <li>
-                                                        <a class="dropdown-item" href="{% url 'lesson_comment_update' reply.id %}">
-                                                            <i class="bi bi-pencil"></i> Редактировать
-                                                        </a>
-                                                    </li>
-                                                    {% endif %}
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' reply.id %}">
-                                                            <i class="bi bi-trash"></i> Удалить
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <p class="mb-0 small">{{ reply.content|linebreaks }}</p>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center text-muted py-4">
-                        <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
-                        <p class="mt-2">Пока нет комментариев. Будьте первым!</p>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <!-- Навигация между уроками -->
+                <!-- Навигация между уроками (legacy) -->
                 <div class="d-flex justify-content-between mt-4">
                     {% if previous_lesson %}
                     <a href="{% url 'lesson_view' previous_lesson.id %}" class="btn btn-outline-secondary">
@@ -322,14 +808,147 @@
                     {% endif %}
                 </div>
             </div>
+            
+            {% endif %}
+            
+            <!-- Обсуждение урока (общее для обоих форматов) -->
+            <div class="p-4 border-top" id="comments">
+                <h5 class="mb-4">
+                    <i class="bi bi-chat-dots"></i> Обсуждение 
+                    <span class="badge bg-secondary">{{ comments_count }}</span>
+                </h5>
+
+                <!-- Форма добавления комментария -->
+                {% if can_comment %}
+                <div class="card border-0 bg-light mb-4">
+                    <div class="card-body">
+                        <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <textarea name="content" class="form-control" rows="3" 
+                                          placeholder="Напишите ваш вопрос или комментарий..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-send"></i> Отправить
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Записывайтесь на курс, чтобы участвовать в обсуждении.
+                </div>
+                {% endif %}
+
+                <!-- Список комментариев -->
+                {% if comments %}
+                <div class="comments-list">
+                    {% for comment in comments %}
+                    <div class="card mb-3 {% if comment.is_pinned %}border-warning{% else %}border-0{% endif %} bg-light">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" 
+                                         style="width: 40px; height: 40px;">
+                                        {{ comment.author.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                                        {% if comment.author == course.instructor %}
+                                        <span class="badge bg-primary ms-1">Преподаватель</span>
+                                        {% endif %}
+                                        {% if comment.is_pinned %}
+                                        <span class="badge bg-warning text-dark ms-1">
+                                            <i class="bi bi-pin-fill"></i> Закреплено
+                                        </span>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    {% if comment.author == request.user or course.instructor == request.user %}
+                                    <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        {% if comment.author == request.user %}
+                                        <li><a class="dropdown-item" href="{% url 'lesson_comment_update' comment.id %}"><i class="bi bi-pencil"></i> Редактировать</a></li>
+                                        {% endif %}
+                                        <li><a class="dropdown-item text-danger" href="{% url 'lesson_comment_delete' comment.id %}"><i class="bi bi-trash"></i> Удалить</a></li>
+                                        {% if course.instructor == request.user %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="post" action="{% url 'lesson_comment_pin' comment.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bi bi-pin"></i> {% if comment.is_pinned %}Открепить{% else %}Закрепить{% endif %}
+                                                </button>
+                                            </form>
+                                        </li>
+                                        {% endif %}
+                                    </ul>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p class="mb-2">{{ comment.content|linebreaks }}</p>
+                            
+                            {% if can_comment %}
+                            <button class="btn btn-sm btn-link text-muted p-0 reply-toggle" data-comment-id="{{ comment.id }}">
+                                <i class="bi bi-reply"></i> Ответить
+                            </button>
+                            <div class="reply-form mt-2" id="reply-form-{{ comment.id }}" style="display: none;">
+                                <form method="post" action="{% url 'lesson_comment_create' lesson.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="reply_to" value="{{ comment.id }}">
+                                    <div class="mb-2">
+                                        <textarea name="content" class="form-control form-control-sm" rows="2" placeholder="Написать ответ..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Ответить</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm reply-cancel" data-comment-id="{{ comment.id }}">Отмена</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                            
+                            {% if comment.replies.all %}
+                            <div class="replies mt-3 ps-4 border-start">
+                                {% for reply in comment.replies.all %}
+                                <div class="reply mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-size: 0.75rem;">
+                                            {{ reply.author.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <strong class="small">{{ reply.author.get_full_name|default:reply.author.username }}</strong>
+                                            {% if reply.author == course.instructor %}
+                                            <span class="badge bg-primary" style="font-size: 0.6rem;">Преподаватель</span>
+                                            {% endif %}
+                                            <br>
+                                            <small class="text-muted">{{ reply.created_at|date:"d.m.Y H:i" }}</small>
+                                        </div>
+                                    </div>
+                                    <p class="mb-0 small">{{ reply.content|linebreaks }}</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Пока нет комментариев. Будьте первым!</p>
+                </div>
+                {% endif %}
+            </div>
         </div>
 
-        <!-- Боковая панель - программа курса -->
+        <!-- Боковая панель -->
         <div class="col-lg-3 border-start bg-light" style="max-height: 100vh; overflow-y: auto;">
             <div class="p-3">
                 <h5 class="mb-3">Программа курса</h5>
-                
-                <!-- Список разделов и уроков -->
                 {% for sect in sections %}
                 <div class="mb-3">
                     <h6 class="text-muted">{{ sect.order }}. {{ sect.title }}</h6>
@@ -342,9 +961,7 @@
                                     <i class="bi bi-{% if less.lesson_type == 'video' %}play-circle{% elif less.lesson_type == 'article' %}file-text{% elif less.lesson_type == 'quiz' %}question-circle{% else %}clipboard-check{% endif %}"></i>
                                     <small>{{ less.title }}</small>
                                 </div>
-                                {% if less.id == lesson.id %}
-                                <i class="bi bi-arrow-right"></i>
-                                {% endif %}
+                                {% if less.id == lesson.id %}<i class="bi bi-arrow-right"></i>{% endif %}
                             </a>
                         </li>
                         {% endfor %}
@@ -360,23 +977,163 @@
 {% block extra_js %}
 <script src="{% static 'js/lesson.js' %}"></script>
 <script>
-    // Переключение форм ответа на комментарии
-    document.querySelectorAll('.reply-toggle').forEach(button => {
-        button.addEventListener('click', function() {
-            const commentId = this.dataset.commentId;
-            const form = document.getElementById('reply-form-' + commentId);
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            if (form.style.display === 'block') {
-                form.querySelector('textarea').focus();
-            }
-        });
-    });
+const csrfToken = '{{ csrf_token }}';
 
-    document.querySelectorAll('.reply-cancel').forEach(button => {
-        button.addEventListener('click', function() {
-            const commentId = this.dataset.commentId;
-            document.getElementById('reply-form-' + commentId).style.display = 'none';
+// Step Answer Handling
+const stepAnswerForm = document.getElementById('step-answer-form');
+const stepFeedback = document.getElementById('step-feedback');
+
+if (stepAnswerForm) {
+    stepAnswerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const stepId = document.getElementById('step-body').dataset.stepId;
+        const stepType = document.getElementById('step-body').dataset.stepType;
+        let answerData = {};
+        
+        if (stepType === 'quiz_single') {
+            const selected = document.querySelector('input[name="answer"]:checked');
+            if (!selected) { showFeedback('error', 'Выберите ответ'); return; }
+            answerData.selected_index = parseInt(selected.value);
+        } else if (stepType === 'quiz_multiple') {
+            const selected = document.querySelectorAll('input[name="answer"]:checked');
+            if (selected.length === 0) { showFeedback('error', 'Выберите хотя бы один ответ'); return; }
+            answerData.selected_indexes = Array.from(selected).map(el => parseInt(el.value));
+        } else if (stepType === 'numeric') {
+            const input = document.querySelector('input[name="answer"]');
+            if (!input.value) { showFeedback('error', 'Введите число'); return; }
+            answerData.value = parseFloat(input.value);
+        } else if (stepType === 'text_answer') {
+            const input = document.querySelector('input[name="answer"]');
+            if (!input.value.trim()) { showFeedback('error', 'Введите ответ'); return; }
+            answerData.text = input.value.trim();
+        } else if (stepType === 'free_answer') {
+            const textarea = document.querySelector('textarea[name="answer"]');
+            if (!textarea.value.trim()) { showFeedback('error', 'Напишите ответ'); return; }
+            answerData.text = textarea.value.trim();
+        } else if (stepType === 'code') {
+            const textarea = document.querySelector('textarea[name="answer"]');
+            answerData.code = textarea.value;
+        } else if (stepType === 'quiz_sorting') {
+            const items = document.querySelectorAll('.sortable-item');
+            answerData.user_order = Array.from(items).map(item => parseInt(item.dataset.index));
+        }
+        
+        try {
+            const response = await fetch(`/api/step/${stepId}/check/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(answerData)
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                if (result.is_correct) {
+                    showFeedback('success', result.message || 'Правильно! ✓');
+                    const currentIndicator = document.querySelector('.step-indicator.active');
+                    if (currentIndicator) currentIndicator.classList.add('completed');
+                    updateProgressBar();
+                } else {
+                    showFeedback('error', result.message || 'Неправильно. Попробуйте еще раз.');
+                    if (result.explanation) showFeedback('info', result.explanation);
+                }
+            } else {
+                showFeedback('error', result.error || 'Ошибка при проверке ответа');
+            }
+        } catch (error) {
+            console.error('Error checking answer:', error);
+            showFeedback('error', 'Ошибка соединения');
+        }
+    });
+}
+
+const markStepCompleteBtn = document.getElementById('mark-step-complete');
+if (markStepCompleteBtn) {
+    markStepCompleteBtn.addEventListener('click', async function() {
+        const stepId = this.dataset.stepId;
+        try {
+            const response = await fetch(`/api/step/${stepId}/complete/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+            });
+            const result = await response.json();
+            if (result.success) {
+                const currentIndicator = document.querySelector('.step-indicator.active');
+                if (currentIndicator) currentIndicator.classList.add('completed');
+                this.innerHTML = '<i class="bi bi-check-circle-fill"></i> Пройдено';
+                this.classList.remove('btn-success');
+                this.classList.add('btn-outline-success');
+                this.disabled = true;
+                updateProgressBar();
+            }
+        } catch (error) { console.error('Error marking step complete:', error); }
+    });
+}
+
+function showFeedback(type, message) {
+    if (!stepFeedback) return;
+    stepFeedback.className = 'step-feedback ' + type;
+    stepFeedback.innerHTML = message;
+    stepFeedback.style.display = 'block';
+}
+
+function updateProgressBar() {
+    const indicators = document.querySelectorAll('.step-indicator');
+    const completed = document.querySelectorAll('.step-indicator.completed').length;
+    const total = indicators.length;
+    if (total > 0) {
+        const percent = Math.round((completed / total) * 100);
+        const progressBar = document.querySelector('.step-progress-fill');
+        if (progressBar) progressBar.style.width = percent + '%';
+    }
+}
+
+// Sortable list
+const sortableList = document.getElementById('sortable-list');
+if (sortableList) {
+    let draggedItem = null;
+    sortableList.querySelectorAll('.sortable-item').forEach(item => {
+        item.addEventListener('dragstart', function(e) { draggedItem = this; this.classList.add('dragging'); });
+        item.addEventListener('dragend', function(e) { this.classList.remove('dragging'); });
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(sortableList, e.clientY);
+            if (afterElement == null) sortableList.appendChild(draggedItem);
+            else sortableList.insertBefore(draggedItem, afterElement);
         });
     });
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.sortable-item:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+            else return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+}
+
+// Character counter
+const essayTextarea = document.querySelector('.essay-textarea');
+const charCounter = document.getElementById('char-counter');
+if (essayTextarea && charCounter) {
+    essayTextarea.addEventListener('input', function() { charCounter.textContent = this.value.length + ' символов'; });
+}
+
+// Comment reply toggle
+document.querySelectorAll('.reply-toggle').forEach(button => {
+    button.addEventListener('click', function() {
+        const commentId = this.dataset.commentId;
+        const form = document.getElementById('reply-form-' + commentId);
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        if (form.style.display === 'block') form.querySelector('textarea').focus();
+    });
+});
+document.querySelectorAll('.reply-cancel').forEach(button => {
+    button.addEventListener('click', function() {
+        const commentId = this.dataset.commentId;
+        document.getElementById('reply-form-' + commentId).style.display = 'none';
+    });
+});
 </script>
 {% endblock %}

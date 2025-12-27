@@ -12,7 +12,8 @@ from django.conf import settings
 from decimal import Decimal
 from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission,
-                     Certificate, LessonComment, Payment, Purchase, PromoCode, Refund, PaymentMethod, CourseMedia)
+                     Certificate, LessonComment, Payment, Purchase, PromoCode, Refund, PaymentMethod, CourseMedia,
+                     Step, StepProgress)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
                     QuestionChoiceForm, QuestionChoiceFormSet, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm,
                     LessonCommentForm, CheckoutForm, StripePaymentForm, RefundRequestForm, PromoCodeForm,
@@ -36,7 +37,8 @@ from .ajax_views import (
 # Импорт AJAX views для Step (Stepik-style шаги)
 from .ajax_views import (
     StepListAjaxView, StepCreateAjaxView, StepGetAjaxView, StepUpdateAjaxView,
-    StepDeleteAjaxView, StepReorderAjaxView, StepDuplicateAjaxView
+    StepDeleteAjaxView, StepReorderAjaxView, StepDuplicateAjaxView,
+    StepCheckAnswerView, StepCompleteView
 )
 
 
@@ -289,6 +291,7 @@ class MyCoursesView(LoginRequiredMixin, ListView):
 class LessonView(LoginRequiredMixin, DetailView):
     """
     Просмотр урока (только для записанных студентов)
+    Поддерживает как старый формат (video/article), так и новый Step-based формат
     """
     model = Lesson
     template_name = 'courses/learning/lesson_view.html'
@@ -299,7 +302,8 @@ class LessonView(LoginRequiredMixin, DetailView):
         return Lesson.objects.select_related(
             'section__course__instructor'
         ).prefetch_related(
-            'section__lessons'
+            'section__lessons',
+            'steps'  # Prefetch steps for Stepik-style lessons
         )
     
     def get_context_data(self, **kwargs):
@@ -342,6 +346,7 @@ class LessonView(LoginRequiredMixin, DetailView):
         context['next_lesson'] = lesson_list[current_index + 1] if current_index < len(lesson_list) - 1 else None
         
         # Прогресс урока
+        enrollment = None
         if Enrollment.objects.filter(student=self.request.user, course=course).exists():
             enrollment = Enrollment.objects.get(student=self.request.user, course=course)
             lesson_progress, _ = LessonProgress.objects.get_or_create(
@@ -350,6 +355,69 @@ class LessonView(LoginRequiredMixin, DetailView):
             )
             context['lesson_progress'] = lesson_progress
             context['is_completed'] = lesson_progress.completed
+            context['enrollment'] = enrollment
+        
+        # ============================================================
+        # STEP-BASED CONTENT (Stepik-style)
+        # ============================================================
+        steps = lesson.steps.all().order_by('order')
+        context['steps'] = steps
+        context['has_steps'] = steps.exists()
+        context['steps_count'] = steps.count()
+        
+        # Получить текущий шаг (из GET параметра или первый)
+        current_step_id = self.request.GET.get('step')
+        current_step = None
+        current_step_index = 0
+        
+        if steps.exists():
+            if current_step_id:
+                try:
+                    current_step = steps.get(id=current_step_id)
+                    current_step_index = list(steps).index(current_step)
+                except Step.DoesNotExist:
+                    current_step = steps.first()
+                    current_step_index = 0
+            else:
+                current_step = steps.first()
+                current_step_index = 0
+        
+        context['current_step'] = current_step
+        context['current_step_index'] = current_step_index
+        
+        # Предыдущий и следующий шаг
+        step_list = list(steps)
+        if current_step:
+            context['previous_step'] = step_list[current_step_index - 1] if current_step_index > 0 else None
+            context['next_step'] = step_list[current_step_index + 1] if current_step_index < len(step_list) - 1 else None
+        
+        # Прогресс по шагам
+        if enrollment and steps.exists():
+            step_progress_dict = {}
+            completed_steps = 0
+            
+            for step in steps:
+                progress, _ = StepProgress.objects.get_or_create(
+                    enrollment=enrollment,
+                    step=step,
+                    defaults={'status': 'not_started'}
+                )
+                step_progress_dict[step.id] = progress
+                if progress.completed:
+                    completed_steps += 1
+            
+            context['step_progress'] = step_progress_dict
+            context['completed_steps'] = completed_steps
+            
+            # Прогресс в процентах
+            if steps.count() > 0:
+                context['steps_progress_percent'] = round((completed_steps / steps.count()) * 100)
+            else:
+                context['steps_progress_percent'] = 0
+            
+            # Прогресс текущего шага
+            if current_step:
+                context['current_step_progress'] = step_progress_dict.get(current_step.id)
         
         # Комментарии к уроку
         context['comments'] = lesson.comments.filter(

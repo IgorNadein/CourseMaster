@@ -76,6 +76,10 @@ urlpatterns = [
     path('api/step/<int:step_id>/delete/', views.StepDeleteAjaxView.as_view(), name='api_step_delete'),
     path('api/step/<int:step_id>/duplicate/', views.StepDuplicateAjaxView.as_view(), name='api_step_duplicate'),
     
+    # AJAX API для Step Progress (Студенты - проверка ответов)
+    path('api/step/<int:step_id>/check/', views.StepCheckAnswerView.as_view(), name='api_step_check'),
+    path('api/step/<int:step_id>/complete/', views.StepCompleteView.as_view(), name='api_step_complete'),
+    
     # Домашние задания (Студенты)
     path('assignment/<int:assignment_id>/submit/', views.AssignmentSubmitView.as_view(), name='assignment_submit'),
     

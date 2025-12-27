@@ -1125,3 +1125,259 @@ class StepDuplicateAjaxView(LoginRequiredMixin, View):
                 'content': new_step.content,
             }
         })
+
+
+# ============================================================
+# STEP PROGRESS API (Проверка ответов и отметка прогресса)
+# ============================================================
+
+class StepCheckAnswerView(LoginRequiredMixin, View):
+    """
+    AJAX: Проверка ответа студента на интерактивный шаг
+    """
+    def post(self, request, step_id):
+        from .models import Enrollment, StepProgress
+        import re
+        
+        step = get_object_or_404(Step, id=step_id)
+        course = step.lesson.section.course
+        
+        # Проверка записи на курс
+        try:
+            enrollment = Enrollment.objects.get(student=request.user, course=course)
+        except Enrollment.DoesNotExist:
+            return JsonResponse({'error': 'Вы не записаны на этот курс'}, status=403)
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Некорректный JSON'}, status=400)
+        
+        # Получить или создать прогресс
+        progress, created = StepProgress.objects.get_or_create(
+            enrollment=enrollment,
+            step=step,
+            defaults={'status': 'in_progress'}
+        )
+        
+        # Увеличить счетчик попыток
+        progress.attempts += 1
+        progress.answer_data = data
+        progress.status = 'in_progress'
+        
+        # Проверка ответа в зависимости от типа шага
+        is_correct = False
+        message = ''
+        explanation = ''
+        
+        step_type = step.step_type
+        content = step.content or {}
+        
+        if step_type == 'quiz_single':
+            # Один правильный ответ
+            correct_index = content.get('correct_index', 0)
+            selected_index = data.get('selected_index')
+            
+            is_correct = selected_index == correct_index
+            if is_correct:
+                message = 'Правильно! ✓'
+            else:
+                message = 'Неправильно. Попробуйте еще раз.'
+            explanation = content.get('explanation', '')
+            
+        elif step_type == 'quiz_multiple':
+            # Несколько правильных ответов
+            correct_indexes = set(content.get('correct_indexes', []))
+            selected_indexes = set(data.get('selected_indexes', []))
+            
+            is_correct = correct_indexes == selected_indexes
+            if is_correct:
+                message = 'Правильно! Все ответы верны. ✓'
+            else:
+                message = 'Неправильно. Не все ответы выбраны правильно.'
+            explanation = content.get('explanation', '')
+            
+        elif step_type == 'numeric':
+            # Числовой ответ с погрешностью
+            correct_answer = content.get('answer', 0)
+            tolerance = content.get('tolerance', 0)
+            user_value = data.get('value', 0)
+            
+            is_correct = abs(user_value - correct_answer) <= tolerance
+            if is_correct:
+                message = f'Правильно! Ответ: {correct_answer} ✓'
+            else:
+                message = 'Неправильно. Попробуйте еще раз.'
+            explanation = content.get('explanation', '')
+            
+        elif step_type == 'text_answer':
+            # Текстовый ответ (проверка по паттернам)
+            patterns = content.get('patterns', [])
+            case_sensitive = content.get('case_sensitive', False)
+            user_text = data.get('text', '').strip()
+            
+            is_correct = False
+            for pattern in patterns:
+                try:
+                    flags = 0 if case_sensitive else re.IGNORECASE
+                    if re.match(pattern, user_text, flags):
+                        is_correct = True
+                        break
+                except re.error:
+                    # Если pattern не regex, сравниваем как текст
+                    if case_sensitive:
+                        is_correct = user_text == pattern
+                    else:
+                        is_correct = user_text.lower() == pattern.lower()
+                    if is_correct:
+                        break
+            
+            if is_correct:
+                message = 'Правильно! ✓'
+            else:
+                message = 'Неправильно. Попробуйте еще раз.'
+            explanation = content.get('explanation', '')
+            
+        elif step_type == 'quiz_sorting':
+            # Сортировка
+            correct_order = content.get('correct_order', [])
+            user_order = data.get('user_order', [])
+            
+            is_correct = correct_order == user_order
+            if is_correct:
+                message = 'Правильно! Порядок верный. ✓'
+            else:
+                message = 'Неправильный порядок. Попробуйте еще раз.'
+            
+        elif step_type == 'quiz_matching':
+            # Сопоставление
+            correct_pairs = content.get('pairs', [])
+            user_pairs = data.get('pairs', [])
+            
+            # Преобразуем в set для сравнения
+            correct_set = set(tuple(p) for p in correct_pairs)
+            user_set = set(tuple(p) for p in user_pairs)
+            
+            is_correct = correct_set == user_set
+            if is_correct:
+                message = 'Правильно! Все пары сопоставлены верно. ✓'
+            else:
+                message = 'Неправильно. Попробуйте еще раз.'
+            
+        elif step_type == 'fill_blanks':
+            # Заполнение пропусков
+            correct_answers = content.get('answers', [])
+            user_answers = data.get('answers', [])
+            
+            if len(correct_answers) == len(user_answers):
+                all_correct = all(
+                    ua.strip().lower() == ca.strip().lower() 
+                    for ua, ca in zip(user_answers, correct_answers)
+                )
+                is_correct = all_correct
+            else:
+                is_correct = False
+            
+            if is_correct:
+                message = 'Правильно! Все пропуски заполнены верно. ✓'
+            else:
+                message = 'Неправильно. Попробуйте еще раз.'
+            
+        elif step_type == 'free_answer':
+            # Свободный ответ (эссе) - не проверяется автоматически
+            min_length = content.get('min_length', 0)
+            user_text = data.get('text', '').strip()
+            
+            if len(user_text) >= min_length:
+                is_correct = True  # Просто принимаем ответ
+                message = 'Ваш ответ отправлен на проверку преподавателю.'
+                progress.status = 'in_progress'  # Ждет проверки
+            else:
+                is_correct = False
+                message = f'Ответ слишком короткий. Минимум {min_length} символов.'
+            
+        elif step_type == 'code':
+            # Код - пока просто принимаем (полная проверка требует интеграции с sandbox)
+            user_code = data.get('code', '')
+            if user_code.strip():
+                is_correct = True
+                message = 'Код отправлен на проверку.'
+                progress.status = 'in_progress'  # Ждет проверки (или sandbox)
+            else:
+                is_correct = False
+                message = 'Напишите код для проверки.'
+        
+        # Сохранить результат
+        progress.is_correct = is_correct
+        if is_correct:
+            progress.completed = True
+            progress.completed_at = timezone.now()
+            progress.status = 'completed'
+            progress.score = step.points
+            progress.max_score = step.points
+        
+        progress.save()
+        
+        return JsonResponse({
+            'success': True,
+            'is_correct': is_correct,
+            'message': message,
+            'explanation': explanation if not is_correct else '',
+            'attempts': progress.attempts,
+            'completed': progress.completed,
+        })
+
+
+class StepCompleteView(LoginRequiredMixin, View):
+    """
+    AJAX: Отметить шаг (text/video) как пройденный
+    """
+    def post(self, request, step_id):
+        from .models import Enrollment, StepProgress
+        
+        step = get_object_or_404(Step, id=step_id)
+        course = step.lesson.section.course
+        
+        # Проверка записи на курс
+        try:
+            enrollment = Enrollment.objects.get(student=request.user, course=course)
+        except Enrollment.DoesNotExist:
+            return JsonResponse({'error': 'Вы не записаны на этот курс'}, status=403)
+        
+        # Только для контентных шагов (text, video)
+        if step.is_interactive:
+            return JsonResponse({'error': 'Этот шаг требует ответа'}, status=400)
+        
+        # Получить или создать прогресс
+        progress, created = StepProgress.objects.get_or_create(
+            enrollment=enrollment,
+            step=step,
+            defaults={'status': 'not_started'}
+        )
+        
+        # Отметить как пройденный
+        progress.completed = True
+        progress.completed_at = timezone.now()
+        progress.status = 'completed'
+        progress.score = step.points
+        progress.max_score = step.points
+        progress.save()
+        
+        # Проверить завершение урока
+        all_steps = step.lesson.steps.all()
+        completed_steps = StepProgress.objects.filter(
+            enrollment=enrollment,
+            step__in=all_steps,
+            completed=True
+        ).count()
+        
+        lesson_completed = completed_steps == all_steps.count()
+        
+        return JsonResponse({
+            'success': True,
+            'completed': True,
+            'lesson_completed': lesson_completed,
+            'steps_completed': completed_steps,
+            'steps_total': all_steps.count(),
+        })
+
