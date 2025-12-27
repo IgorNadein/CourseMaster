@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from .models import (Category, Course, Section, Lesson, Enrollment, LessonProgress, Review, 
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, 
                      AssignmentSubmission, Certificate, LessonComment, PaymentMethod, Purchase, 
-                     Payment, PromoCode, Refund, CourseMedia)
+                     Payment, PromoCode, Refund, CourseMedia, Step, StepProgress)
 
 
 @admin.register(Category)
@@ -381,3 +381,63 @@ class CourseMediaAdmin(admin.ModelAdmin):
             return format_html('<video src="{}" controls style="max-width: 300px;"></video>', obj.file.url)
         return 'Нет предпросмотра'
     file_preview.short_description = 'Предпросмотр'
+
+
+# ============================================================
+# STEP ADMIN (Шаги уроков - Stepik-style)
+# ============================================================
+
+class StepInline(admin.TabularInline):
+    model = Step
+    extra = 1
+    fields = ['step_type', 'title', 'order', 'points', 'is_required']
+    ordering = ['order']
+
+
+@admin.register(Step)
+class StepAdmin(admin.ModelAdmin):
+    list_display = ['id', 'lesson', 'step_type', 'title', 'order', 'points', 'is_required', 'created_at']
+    list_filter = ['step_type', 'is_required', 'lesson__section__course']
+    search_fields = ['title', 'lesson__title', 'lesson__section__course__title']
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ['lesson', 'order']
+    
+    fieldsets = (
+        ('Шаг', {
+            'fields': ('lesson', 'step_type', 'title', 'order')
+        }),
+        ('Контент', {
+            'fields': ('content',),
+            'classes': ('wide',)
+        }),
+        ('Настройки', {
+            'fields': ('points', 'is_required')
+        }),
+        ('Временные метки', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+
+
+@admin.register(StepProgress)
+class StepProgressAdmin(admin.ModelAdmin):
+    list_display = ['id', 'enrollment', 'step', 'status', 'completed', 'is_correct', 'score', 'attempts', 'completed_at']
+    list_filter = ['status', 'completed', 'is_correct']
+    search_fields = ['enrollment__student__username', 'step__lesson__title']
+    readonly_fields = ['started_at', 'completed_at']
+    
+    fieldsets = (
+        ('Прогресс', {
+            'fields': ('enrollment', 'step', 'status', 'completed')
+        }),
+        ('Ответ студента', {
+            'fields': ('answer_data',),
+            'classes': ('wide',)
+        }),
+        ('Результат', {
+            'fields': ('is_correct', 'score', 'max_score', 'attempts', 'feedback')
+        }),
+        ('Временные метки', {
+            'fields': ('started_at', 'completed_at')
+        }),
+    )

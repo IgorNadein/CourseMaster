@@ -180,6 +180,163 @@ class Lesson(models.Model):
         return f"{self.section.title} - {self.title}"
 
 
+# ============================================================
+# STEP MODEL (Шаги урока - как в Stepik)
+# ============================================================
+
+class Step(models.Model):
+    """
+    Шаг урока - атомарная единица контента.
+    Урок может содержать несколько шагов разных типов.
+    Структура как в Stepik: Курс → Модуль → Урок → Шаг
+    """
+    STEP_TYPE_CHOICES = [
+        # Контентные типы
+        ('text', 'Текст/Теория'),
+        ('video', 'Видео'),
+        
+        # Тестовые типы
+        ('quiz_single', 'Тест: один ответ'),
+        ('quiz_multiple', 'Тест: несколько ответов'),
+        ('quiz_sorting', 'Сортировка'),
+        ('quiz_matching', 'Сопоставление'),
+        ('fill_blanks', 'Заполнить пропуски'),
+        
+        # Ответы
+        ('numeric', 'Числовой ответ'),
+        ('text_answer', 'Текстовый ответ'),
+        ('free_answer', 'Свободный ответ (эссе)'),
+        
+        # Программирование
+        ('code', 'Программирование'),
+        ('sql', 'SQL задача'),
+    ]
+    
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='steps')
+    step_type = models.CharField(max_length=20, choices=STEP_TYPE_CHOICES, default='text')
+    order = models.PositiveIntegerField(default=0)
+    title = models.CharField(max_length=200, blank=True, help_text="Название шага (опционально)")
+    
+    # Контент хранится в JSON в зависимости от типа шага
+    # Примеры структур:
+    # text: {"html": "<p>...</p>", "markdown": "..."}
+    # video: {"url": "https://...", "duration": 300, "source": "youtube"}
+    # quiz_single: {"question": "...", "choices": [...], "correct_index": 0, "explanation": "..."}
+    # quiz_multiple: {"question": "...", "choices": [...], "correct_indexes": [0, 2], "explanation": "..."}
+    # quiz_sorting: {"items": [...], "correct_order": [2, 0, 1, 3]}
+    # quiz_matching: {"left": [...], "right": [...], "pairs": [[0,1], [1,0], ...]}
+    # fill_blanks: {"text_with_blanks": "Python is a {{}} language", "answers": ["programming"]}
+    # numeric: {"question": "...", "answer": 42, "tolerance": 0.01}
+    # text_answer: {"question": "...", "patterns": ["regex1", "regex2"], "case_sensitive": false}
+    # free_answer: {"question": "...", "min_length": 100, "rubric": "..."}
+    # code: {"language": "python", "template": "def solve():\n    pass", "tests": [...], "time_limit": 5}
+    # sql: {"database_schema": "...", "query": "SELECT...", "expected_result": [...]}
+    content = models.JSONField(default=dict, blank=True)
+    
+    # Баллы за правильный ответ (для тестовых шагов)
+    points = models.PositiveIntegerField(default=1, help_text="Баллы за правильный ответ")
+    
+    # Настройки
+    is_required = models.BooleanField(default=True, help_text="Обязательный для прохождения урока")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['order', 'created_at']
+        verbose_name = "Шаг"
+        verbose_name_plural = "Шаги"
+    
+    def __str__(self):
+        type_display = dict(self.STEP_TYPE_CHOICES).get(self.step_type, self.step_type)
+        return f"{self.lesson.title} - Шаг {self.order + 1}: {type_display}"
+    
+    @property
+    def is_interactive(self):
+        """Проверить, требует ли шаг ответа от студента"""
+        interactive_types = [
+            'quiz_single', 'quiz_multiple', 'quiz_sorting', 'quiz_matching',
+            'fill_blanks', 'numeric', 'text_answer', 'free_answer', 'code', 'sql'
+        ]
+        return self.step_type in interactive_types
+    
+    @property
+    def is_auto_gradable(self):
+        """Проверить, можно ли автоматически проверить ответ"""
+        auto_gradable_types = [
+            'quiz_single', 'quiz_multiple', 'quiz_sorting', 'quiz_matching',
+            'fill_blanks', 'numeric', 'text_answer', 'code', 'sql'
+        ]
+        return self.step_type in auto_gradable_types
+    
+    def get_content_field(self, field_name, default=None):
+        """Безопасно получить поле из content JSON"""
+        if isinstance(self.content, dict):
+            return self.content.get(field_name, default)
+        return default
+
+
+class StepProgress(models.Model):
+    """
+    Прогресс студента по шагу
+    """
+    STATUS_CHOICES = [
+        ('not_started', 'Не начат'),
+        ('in_progress', 'В процессе'),
+        ('completed', 'Завершён'),
+        ('failed', 'Не пройден'),
+    ]
+    
+    enrollment = models.ForeignKey('Enrollment', on_delete=models.CASCADE, related_name='step_progress')
+    step = models.ForeignKey(Step, on_delete=models.CASCADE, related_name='progress_records')
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
+    completed = models.BooleanField(default=False)
+    
+    # Ответ студента (JSON)
+    # Примеры:
+    # quiz_single: {"selected_index": 2}
+    # quiz_multiple: {"selected_indexes": [0, 2]}
+    # quiz_sorting: {"user_order": [1, 0, 3, 2]}
+    # code: {"code": "def solve(): return 42", "language": "python"}
+    answer_data = models.JSONField(null=True, blank=True)
+    
+    # Результат
+    is_correct = models.BooleanField(null=True, blank=True)
+    score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Баллы")
+    max_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    
+    # Попытки
+    attempts = models.PositiveIntegerField(default=0)
+    
+    # Обратная связь
+    feedback = models.TextField(blank=True, help_text="Автоматический или ручной отзыв")
+    
+    # Временные метки
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['enrollment', 'step']
+        ordering = ['step__order']
+        verbose_name = "Прогресс по шагу"
+        verbose_name_plural = "Прогресс по шагам"
+    
+    def __str__(self):
+        return f"{self.enrollment.student.username} - {self.step}"
+    
+    @property
+    def percentage(self):
+        """Процент выполнения"""
+        if self.max_score and self.max_score > 0:
+            return (self.score / self.max_score) * 100
+        return 100 if self.completed else 0
+
+
+# Alias для обратной совместимости и новой терминологии
+Module = Section
+
+
 class Enrollment(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrollments')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
