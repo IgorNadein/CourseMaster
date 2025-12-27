@@ -14,9 +14,24 @@ from .models import (Course, Category, Enrollment, Section, Lesson, LessonProgre
                      Quiz, Question, QuestionChoice, QuizAttempt, UserAnswer, Assignment, AssignmentSubmission,
                      Certificate, LessonComment, Payment, Purchase, PromoCode, Refund, PaymentMethod, CourseMedia)
 from .forms import (CourseForm, SectionForm, LessonForm, CoursePublishForm, QuizForm, QuestionForm, 
-                    QuestionChoiceForm, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm,
+                    QuestionChoiceForm, QuestionChoiceFormSet, AssignmentForm, AssignmentSubmissionForm, AssignmentGradeForm, ReviewForm,
                     LessonCommentForm, CheckoutForm, StripePaymentForm, RefundRequestForm, PromoCodeForm,
                     CourseMediaUploadForm, CourseMediaEditForm)
+
+# Импорт AJAX views для quiz builder
+from .ajax_views import (
+    QuizBuilderView, QuizUpdateAjaxView, QuestionCreateAjaxView, QuestionUpdateAjaxView,
+    QuestionDeleteAjaxView, QuestionDuplicateAjaxView, ChoiceCreateAjaxView, 
+    ChoiceUpdateAjaxView, ChoiceDeleteAjaxView
+)
+
+# Импорт AJAX views для course builder
+from .ajax_views import (
+    CourseBuilderView, CourseUpdateAjaxView, CoursePublishAjaxView, CourseUnpublishAjaxView,
+    SectionCreateAjaxView, SectionUpdateAjaxView, SectionDeleteAjaxView,
+    LessonCreateAjaxView, LessonGetAjaxView, LessonUpdateAjaxView, LessonDeleteAjaxView,
+    QuizCreateAjaxView, AssignmentCreateAjaxView
+)
 
 
 class CourseListView(ListView):
@@ -462,13 +477,13 @@ class CourseCreateView(LoginRequiredMixin, CreateView):
         self.object = form.save()
         messages.success(
             self.request,
-            'Курс успешно создан! Теперь добавьте разделы и уроки.'
+            'Курс успешно создан! Добавьте разделы и уроки в конструкторе.'
         )
-        return redirect('instructor_course_detail', slug=self.object.slug)
+        # Перенаправляем сразу в конструктор курса
+        return redirect('course_builder', slug=self.object.slug)
     
     def get_success_url(self):
-        # Эта функция больше не используется, т.к. form_valid делает redirect
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.slug})
+        return reverse('course_builder', kwargs={'slug': self.object.slug})
 
 
 class CourseUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -490,7 +505,7 @@ class CourseUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         return super().form_valid(form)
     
     def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.slug})
+        return reverse('course_builder', kwargs={'slug': self.object.slug})
 
 
 class CourseDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
@@ -512,214 +527,26 @@ class CourseDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-class InstructorCourseDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+class InstructorCourseDetailView(LoginRequiredMixin, UserPassesTestMixin, View):
     """
-    Детальная страница курса для преподавателя с управлением
+    Перенаправляет на конструктор курса (course_builder)
+    Оставлен для обратной совместимости старых ссылок
     """
-    model = Course
-    template_name = 'courses/instructor/course_detail.html'
-    context_object_name = 'course'
-    slug_field = 'slug'
-    slug_url_kwarg = 'slug'
-    
     def test_func(self):
-        course = self.get_object()
+        slug = self.kwargs.get('slug')
+        course = get_object_or_404(Course, slug=slug)
         return course.instructor == self.request.user
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        course = self.object
-        
-        # Разделы и уроки
-        context['sections'] = course.sections.prefetch_related('lessons').all()
-        
-        # Статистика
-        context['total_sections'] = course.sections.count()
-        context['total_lessons'] = Lesson.objects.filter(section__course=course).count()
-        context['total_enrollments'] = course.enrollments.count()
-        
-        # Средний прогресс студентов
-        enrollments = course.enrollments.all()
-        if enrollments:
-            avg_progress = sum(e.progress_percentage for e in enrollments) / len(enrollments)
-            context['avg_student_progress'] = avg_progress
-        else:
-            context['avg_student_progress'] = 0
-        
-        return context
+    def get(self, request, slug):
+        return redirect('course_builder', slug=slug)
 
 
-class SectionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
-    """
-    Создание раздела курса
-    """
-    model = Section
-    form_class = SectionForm
-    template_name = 'courses/instructor/section_form.html'
-    
-    def test_func(self):
-        course_slug = self.kwargs.get('course_slug')
-        course = get_object_or_404(Course, slug=course_slug)
-        return course.instructor == self.request.user
-    
-    def form_valid(self, form):
-        course_slug = self.kwargs.get('course_slug')
-        course = get_object_or_404(Course, slug=course_slug)
-        form.instance.course = course
-        
-        # Автоматически установить порядковый номер (последний + 1)
-        last_section = Section.objects.filter(course=course).order_by('-order').first()
-        form.instance.order = (last_section.order + 1) if last_section else 1
-        
-        messages.success(self.request, 'Раздел успешно создан!')
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.course.slug})
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        course_slug = self.kwargs.get('course_slug')
-        context['course'] = get_object_or_404(Course, slug=course_slug)
-        return context
+# SectionCreateView, SectionUpdateView, SectionDeleteView - УДАЛЕНЫ
+# Теперь используется CourseBuilderView с AJAX API
 
 
-class SectionUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    """
-    Редактирование раздела
-    """
-    model = Section
-    form_class = SectionForm
-    template_name = 'courses/instructor/section_form.html'
-    pk_url_kwarg = 'section_id'
-    
-    def test_func(self):
-        section = self.get_object()
-        return section.course.instructor == self.request.user
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Раздел успешно обновлен!')
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.course.slug})
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['course'] = self.object.course
-        return context
-
-
-class SectionDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    """
-    Удаление раздела
-    """
-    model = Section
-    template_name = 'courses/instructor/section_confirm_delete.html'
-    pk_url_kwarg = 'section_id'
-    
-    def test_func(self):
-        section = self.get_object()
-        return section.course.instructor == self.request.user
-    
-    def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.course.slug})
-    
-    def delete(self, request, *args, **kwargs):
-        messages.success(request, 'Раздел успешно удален.')
-        return super().delete(request, *args, **kwargs)
-
-
-class LessonCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
-    """
-    Создание урока
-    """
-    model = Lesson
-    form_class = LessonForm
-    template_name = 'courses/instructor/lesson_form.html'
-    
-    def test_func(self):
-        section_id = self.kwargs.get('section_id')
-        section = get_object_or_404(Section, id=section_id)
-        return section.course.instructor == self.request.user
-    
-    def form_valid(self, form):
-        section_id = self.kwargs.get('section_id')
-        section = get_object_or_404(Section, id=section_id)
-        form.instance.section = section
-        
-        # Автоматически установить порядковый номер (последний + 1)
-        last_lesson = Lesson.objects.filter(section=section).order_by('-order').first()
-        form.instance.order = (last_lesson.order + 1) if last_lesson else 1
-        
-        messages.success(self.request, 'Урок успешно создан!')
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.section.course.slug})
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        section_id = self.kwargs.get('section_id')
-        section = get_object_or_404(Section, id=section_id)
-        context['section'] = section
-        context['course'] = section.course
-        return context
-    
-    def get_initial(self):
-        """Предзаполнить тип урока из GET-параметра"""
-        initial = super().get_initial()
-        lesson_type = self.request.GET.get('type')
-        if lesson_type in ['video', 'article', 'quiz', 'assignment']:
-            initial['lesson_type'] = lesson_type
-        return initial
-
-
-class LessonUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    """
-    Редактирование урока
-    """
-    model = Lesson
-    form_class = LessonForm
-    template_name = 'courses/instructor/lesson_form.html'
-    pk_url_kwarg = 'lesson_id'
-    
-    def test_func(self):
-        lesson = self.get_object()
-        return lesson.section.course.instructor == self.request.user
-    
-    def form_valid(self, form):
-        messages.success(self.request, 'Урок успешно обновлен!')
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.section.course.slug})
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['section'] = self.object.section
-        context['course'] = self.object.section.course
-        return context
-
-
-class LessonDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    """
-    Удаление урока
-    """
-    model = Lesson
-    template_name = 'courses/instructor/lesson_confirm_delete.html'
-    pk_url_kwarg = 'lesson_id'
-    
-    def test_func(self):
-        lesson = self.get_object()
-        return lesson.section.course.instructor == self.request.user
-    
-    def get_success_url(self):
-        return reverse('instructor_course_detail', kwargs={'slug': self.object.section.course.slug})
-    
-    def delete(self, request, *args, **kwargs):
-        messages.success(request, 'Урок успешно удален.')
-        return super().delete(request, *args, **kwargs)
+# LessonCreateView, LessonUpdateView, LessonDeleteView - УДАЛЕНЫ
+# Теперь используется CourseBuilderView с AJAX API
 
 
 class CoursePublishView(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -975,39 +802,9 @@ class InstructorQuizDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVi
         return context
 
 
-class QuestionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
-    """
-    Преподаватель добавляет вопрос в тест
-    """
-    model = Question
-    form_class = QuestionForm
-    template_name = 'courses/instructor/question_form.html'
-    
-    def test_func(self):
-        quiz_id = self.kwargs.get('quiz_id')
-        quiz = get_object_or_404(Quiz, id=quiz_id)
-        return quiz.lesson.section.course.instructor == self.request.user
-    
-    def form_valid(self, form):
-        quiz_id = self.kwargs.get('quiz_id')
-        quiz = get_object_or_404(Quiz, id=quiz_id)
-        form.instance.quiz = quiz
-        form.instance.order = quiz.questions.count() + 1
-        messages.success(self.request, 'Вопрос добавлен!')
-        return super().form_valid(form)
-    
-    def get_success_url(self):
-        quiz_id = self.kwargs.get('quiz_id')
-        return reverse('instructor_quiz_detail', kwargs={'quiz_id': quiz_id})
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        quiz_id = self.kwargs.get('quiz_id')
-        quiz = get_object_or_404(Quiz, id=quiz_id)
-        context['quiz'] = quiz
-        context['lesson'] = quiz.lesson
-        context['course'] = quiz.lesson.section.course
-        return context
+# QuestionCreateView, QuestionDetailView, QuestionUpdateView, QuestionDeleteView - УДАЛЕНЫ
+# QuestionChoiceCreateView, QuestionChoiceUpdateView, QuestionChoiceDeleteView - УДАЛЕНЫ  
+# Теперь используется QuizBuilderView с AJAX API
 
 
 # ============================================================
