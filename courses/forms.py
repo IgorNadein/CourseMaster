@@ -1,4 +1,5 @@
 from django import forms
+from django.forms import inlineformset_factory
 from .models import (Course, Section, Lesson, Category, Quiz, Question, QuestionChoice, Assignment, 
                      AssignmentSubmission, Review, LessonComment, Purchase, Payment, PromoCode, CourseMedia)
 
@@ -255,6 +256,17 @@ class QuestionChoiceForm(forms.ModelForm):
                 'class': 'form-check-input'
             }),
         }
+
+
+# Formset для добавления нескольких вариантов ответов при создании вопроса
+QuestionChoiceFormSet = inlineformset_factory(
+    Question,
+    QuestionChoice,
+    form=QuestionChoiceForm,
+    extra=4,  # По умолчанию 4 пустых формы
+    can_delete=True,
+    can_delete_extra=True,
+)
 
 
 class AssignmentForm(forms.ModelForm):
