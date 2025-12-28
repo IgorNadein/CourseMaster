@@ -685,116 +685,17 @@
             
             {% endif %}
 
-            <!-- Мета-информация и действия -->
+            <!-- Материалы урока (вложения) -->
+            {% if lesson.attachment %}
             <div class="p-4 border-top">
-                <!-- Заголовок и навигация -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h4 class="mb-1">{{ lesson.title }}</h4>
-                        <p class="text-muted mb-0">
-                            <a href="{% url 'course_detail' course.slug %}" class="text-decoration-none">
-                                {{ course.title }}
-                            </a> • {{ section.title }}
-                        </p>
-                    </div>
-                    <div>
-                        {% if is_completed %}
-                        <span class="badge bg-success fs-6">
-                            <i class="bi bi-check-circle-fill"></i> Пройдено
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Вложения -->
-                {% if lesson.attachment %}
-                <div class="mb-4">
-                    <h5>Материалы</h5>
-                    <a href="{{ lesson.attachment.url }}" class="btn btn-outline-primary" download>
-                        <i class="bi bi-download"></i> Скачать материалы
-                    </a>
-                </div>
-                {% endif %}
-
-                <!-- Тест урока (legacy) -->
-                {% if lesson.quiz %}
-                <div class="mb-4">
-                    <div class="card border-0 bg-light">
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="bi bi-question-circle"></i> {{ lesson.quiz.title }}
-                            </h5>
-                            <p class="card-text text-muted small">
-                                {{ lesson.quiz.questions.count }} вопросов • Проходной балл: {{ lesson.quiz.pass_percentage }}%
-                            </p>
-                            <a href="{% url 'quiz_take' lesson.quiz.id %}" class="btn btn-primary btn-sm">
-                                <i class="bi bi-pencil-square"></i> Пройти тест
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Домашнее задание (legacy) -->
-                {% if lesson.assignment %}
-                <div class="mb-4">
-                    <div class="card border-0 bg-light">
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="bi bi-clipboard-check"></i> {{ lesson.assignment.title }}
-                            </h5>
-                            <p class="card-text text-muted small">
-                                Максимум баллов: {{ lesson.assignment.max_points }}
-                                {% if lesson.assignment.due_date %}
-                                • Дедлайн: {{ lesson.assignment.due_date|date:"d.m.Y H:i" }}
-                                {% endif %}
-                            </p>
-                            <a href="{% url 'assignment_submit' lesson.assignment.id %}" class="btn btn-primary btn-sm">
-                                <i class="bi bi-upload"></i> Отправить задание
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Навигация между уроками (legacy) -->
-                <div class="d-flex justify-content-between mt-4">
-                    {% if previous_lesson %}
-                    <a href="{% url 'lesson_view' previous_lesson.id %}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Предыдущий урок
-                    </a>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-
-                    <form method="post" action="{% url 'lesson_complete' lesson.id %}" class="d-inline">
-                        {% csrf_token %}
-                        {% if next_lesson %}
-                        <input type="hidden" name="next_lesson_id" value="{{ next_lesson.id }}">
-                        {% endif %}
-                        
-                        {% if not is_completed %}
-                        <button type="submit" class="btn btn-success">
-                            <i class="bi bi-check-circle"></i> Отметить как пройденный
-                        </button>
-                        {% endif %}
-                    </form>
-
-                    {% if next_lesson %}
-                    <a href="{% url 'lesson_view' next_lesson.id %}" class="btn btn-primary">
-                        Следующий урок <i class="bi bi-arrow-right"></i>
-                    </a>
-                    {% else %}
-                    <a href="{% url 'course_detail' course.slug %}" class="btn btn-success">
-                        <i class="bi bi-trophy"></i> Завершить курс
-                    </a>
-                    {% endif %}
-                </div>
+                <h5><i class="bi bi-paperclip"></i> Материалы к уроку</h5>
+                <a href="{{ lesson.attachment.url }}" class="btn btn-outline-primary" download>
+                    <i class="bi bi-download"></i> Скачать материалы
+                </a>
             </div>
-            
             {% endif %}
             
-            <!-- Обсуждение урока (общее для обоих форматов) -->
+            <!-- Обсуждение урока -->
             <div class="p-4 border-top" id="comments">
                 <h5 class="mb-4">
                     <i class="bi bi-chat-dots"></i> Обсуждение 

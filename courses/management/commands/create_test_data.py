@@ -214,22 +214,13 @@ class Command(BaseCommand):
                     self.stdout.write(f'  ✓ Раздел "{section.title}" в курсе "{course.title}" создан')
                 
                 for lesson_idx, lesson_data in enumerate(section_data['lessons'], 1):
-                    lesson_type_map = {
-                        'video': 'video',
-                        'article': 'article',
-                        'assignment': 'assignment',
-                        'quiz': 'quiz'
-                    }
-                    
                     lesson, created = Lesson.objects.get_or_create(
                         section=section,
                         title=lesson_data['title'],
                         defaults={
-                            'lesson_type': lesson_type_map.get(lesson_data['type'], 'video'),
                             'duration_minutes': lesson_data['duration'],
                             'order': lesson_idx,
                             'is_preview': lesson_idx == 1,  # Первый урок бесплатный
-                            'content': f'Содержание урока: {lesson_data["title"]}'
                         }
                     )
                     

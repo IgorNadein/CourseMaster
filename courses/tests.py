@@ -74,12 +74,11 @@ class LessonModelTests(TestCase):
         lesson = Lesson.objects.create(
             section=self.section,
             title="Introduction Video",
-            lesson_type='video',
             duration_minutes=10,
             order=1
         )
         self.assertEqual(str(lesson), "Section 1 - Introduction Video")
-        self.assertEqual(lesson.lesson_type, 'video')
+        self.assertEqual(lesson.duration_minutes, 10)
 
 
 class EnrollmentModelTests(TestCase):

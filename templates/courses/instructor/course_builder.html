@@ -618,17 +618,9 @@ function toggleSectionCollapse(sectionId) {
 // ============================================================
 
 // Добавить урок
-async function addLesson(sectionId, lessonType) {
-    const titles = {
-        'video': 'Новый видео-урок',
-        'article': 'Новая статья',
-        'quiz': 'Новый тест',
-        'assignment': 'Новое задание'
-    };
-    
+async function addLesson(sectionId) {
     const result = await apiRequest(`/courses/api/section/${sectionId}/lesson/create/`, 'POST', {
-        title: titles[lessonType],
-        lesson_type: lessonType
+        title: 'Новый урок'
     });
     
     if (result.success) {

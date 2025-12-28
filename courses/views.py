@@ -291,7 +291,7 @@ class MyCoursesView(LoginRequiredMixin, ListView):
 class LessonView(LoginRequiredMixin, DetailView):
     """
     Просмотр урока (только для записанных студентов)
-    Поддерживает как старый формат (video/article), так и новый Step-based формат
+    Урок содержит шаги (Step) - контент отображается пошагово
     """
     model = Lesson
     template_name = 'courses/learning/lesson_view.html'
